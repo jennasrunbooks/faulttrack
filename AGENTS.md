@@ -140,7 +140,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
    - Pin dependencies through `uv.lock`, and change them only with `uv add` or `uv remove`. Commit `pyproject.toml` and `uv.lock` together.
    - Tests must not need `data/raw/` or the network.
 9. **Don't download and run binaries or installers from the internet.** Install tools only through `uv` or the devcontainer definition. If a task needs a tool the container doesn't have, stop and ask.
-10. **No stretch work before submission.** Items in spec Section 12 (Helm/kind, Alertmanager webhook, raw-metric features, AWS hosting, logs/traces, CD) wait until after Nov 16. After submission, don't push to `main` until grading closes, the week after the deadline.
+10. **No stretch work before submission.** Items in spec Section 12 (Helm/kind, Alertmanager webhook, raw-metric features, AWS hosting, logs/traces, CD) wait until after the Nov 16 deadline.
 
 ## Conventions
 
@@ -195,7 +195,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
 
 **The spec:** agents don't edit `product-spec.md`. The maintainer owns it and marks the plan's Status column. Propose changes in the PR description.
 
-**Dependabot PRs:** the maintainer reviews and merges them. Don't merge, rebase or modify them. From Fri Nov 13 until grading closes, only security updates merge.
+**Dependabot PRs:** the maintainer reviews and merges them. Don't merge, rebase or modify them.
 
 ## When to stop and ask
 

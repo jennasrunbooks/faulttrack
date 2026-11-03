@@ -21,11 +21,11 @@ These are known, deliberate trade-offs for a two-week course project. Each row s
 | An agent could weaken a test to make CI green | Agent PRs | CI can't judge test intent. Human review checks test changes, and `AGENTS.md` forbids skipping or weakening tests | CODEOWNERS on `tests/`, requiring maintainer review |
 | No Claude Code guard hooks or deny rules | `.claude/` | The devcontainer and token already remove the dangerous capabilities: no Docker, no deploy credentials, no Workflows permission | Add `.claude/settings.json` deny rules for `fly`, `git push --force`, `git tag` and reads of `.env*` |
 | The devcontainer has open outbound network | Devcontainer | `uv sync` needs PyPI, and `make data` needs Zenodo | A network allowlist (PyPI, Zenodo, GitHub) |
-| `model.bin` is a pickle, and loading a pickle runs code | `predict.py` startup | The file comes only from this repo through reviewed PRs, and the API never loads user-supplied models | Serialise to a non-executable format, such as XGBoost JSON or skops |
+| `model.bin` is a pickle, and loading a pickle runs code | `predict.py` startup | The file comes only from this repo through reviewed PRs, and the API never loads user-supplied models | Serialize to a non-executable format, such as XGBoost JSON or skops |
 | The public API has no authentication or rate limit | Fly.io app | It's a stateless demo with no data to protect. Scale-to-zero and Fly's machine limits cap the cost | A Fly.io concurrency limit, a request rate limit in the app, or an API key for `/predict*` |
 | Issues: write on the agent token | PAT scope | Lets agents comment progress and questions on their own issues | Drop it, and have agents ask questions in PR comments only |
 
-These gaps are reviewed again after grading closes.
+These gaps are reviewed again after the Nov 16 deadline.
 
 ## Development-time agent
 
@@ -49,14 +49,18 @@ These gaps are reviewed again after grading closes.
 
 - **`main`:** pull request required (1 approval), the `ci-ok` status check required, no force pushes, no deletions.
 - **Merge method:** squash only.
-- **Tags:** `midterm-submission` is created by Jenna on the submitted commit. A tag ruleset blocks updating or deleting `midterm-submission` (only Jenna, as admin, can bypass it).
+- **Tags:** `midterm-submission` is created by Jenna on the submitted commit and published as a release. A tag ruleset restricts creating, updating and deleting `midterm-submission` (only Jenna, as repository admin, can bypass it).
 - **Security:** Dependabot alerts and security updates are on. Secret scanning and push protection are on (free for public repos).
 
 ## CI
 
 **PR CI permissions:** `permissions: contents: read` at the top of `ci.yaml`. PR CI uses no secrets, so a PR from a fork or a Dependabot PR can't exfiltrate anything.
 
-**Actions:** third-party actions are pinned to commit SHAs, and Dependabot keeps them current.
+**Actions:** every action is pinned to a full-length commit SHA, and Dependabot keeps the pins current. The repo settings enforce this:
+- **Allowed sources:** actions created by GitHub, actions from Marketplace verified creators, actions in `jennasrunbooks` repos, and an explicit allowlist. The allowlist currently has `astral-sh/setup-uv@*`; add other actions there as they're needed.
+- **SHA pins:** actions must be pinned to a full-length commit SHA, so a workflow using a tag like `@v4` fails to start.
+- **`GITHUB_TOKEN`:** read-only by default, and Actions can't create or approve pull requests.
+- **Fork PRs:** workflows need approval for first-time contributors.
 
 **Image builds:** the `docker` job builds the image but never pushes it. There's no registry credential in CI for the graded build.
 
@@ -84,5 +88,5 @@ These gaps are reviewed again after grading closes.
 
 ## Data and license obligations
 
-- **licenses:** RCAEval is CC BY 4.0. The committed `re2_features.csv` is a derived work, and `data/features/ATTRIBUTION.md` credits the source and describes the changes. Code is Apache-2.0.
+- **Licenses:** RCAEval is CC BY 4.0. The committed `re2_features.csv` is a derived work, and `data/features/ATTRIBUTION.md` credits the source and describes the changes. Code is Apache-2.0.
 - **What stays out of the repo:** raw data (`data/raw/`) and the zips are never committed. The data contains no personal information. It's synthetic microservice telemetry from fault-injection experiments.

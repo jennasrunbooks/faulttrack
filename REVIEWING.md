@@ -4,6 +4,14 @@ This guide is for peer reviewers of the ML Zoomcamp 2026 midterm project. It map
 
 **You don't need** a cloud account, Docker (unless you're checking containerization), or the 4 GB raw dataset. The feature table the notebook and `train.py` use is committed to the repo.
 
+**Reviewing the submitted version.** The commit submitted on 16 November 2026 is tagged `midterm-submission` and published as a [release](https://github.com/jennasrunbooks/faulttrack/releases/tag/midterm-submission). To browse it, open [the tag](https://github.com/jennasrunbooks/faulttrack/tree/midterm-submission). To run it, clone the repo and check out the tag:
+
+```bash
+git clone https://github.com/jennasrunbooks/faulttrack.git
+cd faulttrack
+git checkout midterm-submission
+```
+
 ## Start here (2 min)
 
 **What it is:**
@@ -33,7 +41,7 @@ This guide is for peer reviewers of the ML Zoomcamp 2026 midterm project. It map
 
 **No-install tour:**
 
-1. **Problem and results:** read [README.md](README.md), especially "Problem", "Results" and "Generalising to an unseen system".
+1. **Problem and results:** read [README.md](README.md), especially "Problem", "Results" and "Generalizing to an unseen system".
 2. **Notebook:** open [notebook.ipynb](notebook.ipynb) on GitHub. It's committed with outputs, so it renders without running.
 3. **Live API:** open https://faulttrack.jennasrunbooks.com/docs and use **Try it out** on `POST /predict/case`. Upload [tests/fixtures/simple_metrics.csv](tests/fixtures/) with the detection time given in the README.
 4. **Results page:** open https://faulttrack.jennasrunbooks.com/ for the results summary, confusion matrix and decision tree.
@@ -156,7 +164,7 @@ These are filled in from a fresh-clone run on Nov 15 (plan line 13) and match `w
 
 ## Known limits
 
-- **Unseen systems.** Accuracy on a system the model wasn't trained on is much lower than the headline. The README's "Generalising to an unseen system" section shows this, with the analysis behind it. It's a real finding about domain shift, not a hidden flaw.
+- **Unseen systems.** Accuracy on a system the model wasn't trained on is much lower than the headline. The README's "Generalizing to an unseen system" section shows this, with the analysis behind it. It's a real finding about domain shift, not a hidden flaw.
 - **Disk faults** sometimes have no direct disk telemetry in the data, so they're detected through memory and CPU side effects.
 - **The root-cause service** comes from a simple most-anomalous-service rule, not a trained model.
 

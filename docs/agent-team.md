@@ -15,6 +15,7 @@ FaultTrack is built by one human (Jenna) and a small team of AI agents. Each age
 | **Product owner and reviewer** | Jenna | Owns the spec and the plan's Status column. Sets priorities, reviews and merges PRs. Runs everything outside the devcontainer: Docker builds, `fly deploy`, DNS and certificates, branch protection, `.github/` files, Dependabot merges, the `midterm-submission` tag, and the submission on the course platform | Skip CI or review on her own PRs |
 | **Planner and second reviewer** | Claude in the claude.ai project "Zoomcamp \| ML" | Drafts and revises the spec. Turns plan lines into GitHub issues with acceptance criteria, and gives Jenna the `gh` commands to create them. Writes the `scripts/gh/` scripts (labels, milestone, issues, repo variables and secrets). Writes helper scripts like the go/no-go spike. Reviews PRs against the spec and the rubric. Checks reported metrics against the evaluation rules. Keeps the plan on schedule: flags slips early and says what to cut | Push code, approve or merge PRs, deploy |
 | **Implementers** | Claude Code in the devcontainer, as machine user `jksprattler-agent` | One issue on one branch, ending in a PR with test evidence. Fixes review comments on the same branch | Merge, edit `.github/`, edit the spec, read `.env`, use Docker, deploy, touch tags |
+| **QA reviewer** | Claude Code subagent `qa-reviewer` (`.claude/agents/qa-reviewer.md`, Opus), started by the implementer | On high-risk issues only (plan lines 4, 6, 7): an independent check of the branch against the issue's acceptance criteria and a fixed leakage, parity and reproducibility checklist, before the PR is opened. Returns a PASS / PASS WITH NOTES / BLOCK report | Edit files, commit, push, approve or merge. It reports; the implementer fixes |
 | **Gatekeepers** | Branch protection on `main`, the required `ci-ok` check, the fine-grained token scope, and the devcontainer (no Docker, no credentials) | Enforce the rules whatever an agent decides | Be bypassed by an agent (blocks are reported, not worked around) |
 
 ## Workstreams
@@ -48,16 +49,17 @@ Most of the plan is a chain: the features feed the notebook, the notebook picks 
    - **colors:** areas are pastel, ML labels mid-tone, routing labels bright, so the labels that need action stand out
    - **Dependabot:** `dependencies`, `security`
 3. **Assignment.** Jenna assigns the issue and starts an implementer in a fresh clone, on the branch `ws-<n>-<short-desc>`.
-4. **Implementation.** The implementer reads `AGENTS.md`, the issue and the spec sections it names. It implements, then runs `make lint` and `make test`, plus the notebook run if the notebook changed. It stops and asks whenever a decision belongs to Jenna (the list is in `AGENTS.md` under "When to stop and ask").
-5. **PR.** The implementer opens a PR that says `Closes #<issue>` and lists:
+4. **Implementation.** The implementer reads `AGENTS.md`, the issue and the spec sections it names. It implements, then runs `make lint`, `make typecheck` and `make test`, plus the notebook run if the notebook changed. It stops and asks whenever a decision belongs to Jenna (the list is in `AGENTS.md` under "When to stop and ask").
+5. **QA (high-risk issues only).** For plan lines 4, 6 and 7, the implementer runs the `qa-reviewer` subagent before opening the PR, fixes anything it marks **BLOCK**, re-runs it, and pastes the final report into the PR under `## QA review`.
+6. **PR.** The implementer opens a PR that says `Closes #<issue>` and lists:
    - the plan line and rubric criterion it advances
    - decisions made and alternatives rejected
    - test evidence: commands and results, plus metrics as mean ± std where they changed
    - anything it couldn't verify, such as Docker or the live URL
    - proposed spec changes, if any
-6. **Review.** CI runs (path-aware, with `ci-ok` as the gate). Jenna and the planner review: the planner checks it against the spec and the evaluation rules, and Jenna checks she can explain it. The implementer pushes fixes to the same branch.
-7. **Merge.** Jenna squash-merges, marks the plan line `Done (date)` in the spec if the line is complete, and records any decision in `docs/decisions.md`.
-8. **Next issue.** The implementer starts its next issue in a new session, so stale context doesn't carry over.
+7. **Review.** CI runs (path-aware, with `ci-ok` as the gate). Jenna and the planner review: the planner checks it against the spec and the evaluation rules, and Jenna checks she can explain it. The implementer pushes fixes to the same branch.
+8. **Merge.** Jenna squash-merges, marks the plan line `Done (date)` in the spec if the line is complete, and records any decision in `docs/decisions.md`.
+9. **Next issue.** The implementer starts its next issue in a new session, so stale context doesn't carry over.
 
 ### Issue template
 

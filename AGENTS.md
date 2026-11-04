@@ -198,7 +198,8 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
    - anything else: `fix/<area>-<short-desc>`, `chore/<area>-<short-desc>` or `docs/<short-desc>`
    - areas: `data`, `features`, `notebook`, `train`, `api`, `docker`, `deploy`, `ci`, `docs`
 3. **Commit messages** follow Conventional Commits, with the area as the scope. For example: `feat(features): add per-kind abssum and n_gt3 aggregates`.
-4. **Before every commit:** `make lint` and `make test` pass. Don't commit failing tests, and don't skip them to get green.
+4. **Before every commit:** `make lint`, `make typecheck` and `make test` pass. Don't commit failing tests, and don't skip them to get green.
+   - **QA on high-risk issues (plan lines 4, 6, 7):** before opening the PR, run the `qa-reviewer` subagent (`.claude/agents/qa-reviewer.md`). Fix everything it marks **BLOCK**, re-run it until the verdict is PASS or PASS WITH NOTES, and paste the final report into the PR under `## QA review`. If you think a BLOCK is wrong, say why in the PR and let the maintainer decide; don't work around it.
 5. **Push the branch and open a PR** against `main` that:
    - names the plan line it advances (e.g. "Plan line 4: shared library") and the rubric criterion, if any
    - summarizes the change and links the spec section it implements
@@ -206,6 +207,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
    - calls out any change to features, the evaluation setup, dependencies or committed data
    - lists any spec change you think is needed (see below)
    - lists the docs you read before starting (see "Before your first edit on any issue")
+   - for plan lines 4, 6 and 7: includes the `qa-reviewer` report under `## QA review`
 6. **Merging:** squash merge is the default, and a human merges.
 
 **The spec:** agents don't edit `product-spec.md`. The maintainer owns it and marks the plan's Status column. Propose changes in the PR description.

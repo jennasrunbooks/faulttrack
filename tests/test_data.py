@@ -18,6 +18,7 @@ from faulttrack.data import (
     load_case,
     parse_label,
     read_metrics,
+    untimed_rows,
 )
 
 T0 = 1_700_000_000
@@ -71,7 +72,7 @@ def test_find_cases_yields_one_record_per_case(tmp_path: Path) -> None:
 def test_find_cases_skips_raw_only_case_with_message(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    # spec 3.3: RE2-OB checkoutservice_cpu/4 has metrics.csv but no simple_metrics
+    # a raw-only case folder (metrics.csv but no simple_metrics.csv); RE2 has none
     _write_case(tmp_path, "RE2-OB", "checkoutservice_cpu", 4, simple=False, raw=True)
     _write_case(tmp_path, "RE2-OB", "checkoutservice_cpu", 5)
     cases = list(find_cases(tmp_path))
@@ -157,10 +158,31 @@ def test_clean_metrics_requires_time_column() -> None:
         clean_metrics(pd.DataFrame({"cart_cpu": [1.0]}))
 
 
-@pytest.mark.parametrize("bad_time", ["2026-11-04T10:00:00", None, "inf"])
+@pytest.mark.parametrize("bad_time", ["2026-11-04T10:00:00", "abc", "inf"])
 def test_clean_metrics_rejects_bad_time_values(bad_time: str | None) -> None:
     frame = pd.DataFrame({"time": [str(T0), bad_time], "cart_cpu": [1.0, 2.0]})
     with pytest.raises(ValueError, match="time"):
+        clean_metrics(frame)
+
+
+def test_clean_metrics_drops_trailing_untimed_rows() -> None:
+    # like RE2-OB checkoutservice_cpu/2: values but an empty time at the end
+    text = f"time,cart_cpu\n{T0},1\n{T0 + 1},2\n,9\n,9\n"
+    raw = read_metrics(io.StringIO(text))
+    assert int(untimed_rows(raw).sum()) == 2
+    out = clean_metrics(raw)
+    assert out["time"].tolist() == [T0, T0 + 1]
+    assert out["cart_cpu"].tolist() == [1.0, 2.0]
+
+
+def test_clean_metrics_drops_blank_time_text() -> None:
+    frame = pd.DataFrame({"time": [str(T0), "  ", None], "cart_cpu": [1.0, 2.0, 3.0]})
+    assert clean_metrics(frame)["cart_cpu"].tolist() == [1.0]
+
+
+def test_clean_metrics_raises_when_no_timed_rows_remain() -> None:
+    frame = pd.DataFrame({"time": [None, None], "cart_cpu": [1.0, 2.0]})
+    with pytest.raises(ValueError, match="no rows"):
         clean_metrics(frame)
 
 

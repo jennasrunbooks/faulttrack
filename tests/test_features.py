@@ -216,3 +216,27 @@ def test_raw_z_is_clipped() -> None:
     baseline = pd.DataFrame({"m": np.r_[np.full(299, 1.0), 1.001]})
     post = pd.DataFrame({"m": np.full(120, 1e9)})
     assert _only(shift_scores(baseline, post, z_floor=0.0, log_z=False)) == 1000.0
+
+
+# ---------- service counts (metadata for the norm_counts experiment) ----------
+
+
+def test_service_counts_merge_db_and_match_norm_counts_absmean() -> None:
+    frame = _step(_frame(kinds=("cpu", "mem")), "cartservice_cpu", 30.0)
+    frame["carts-db_cpu"] = 50.0 + np.random.default_rng(1).normal(0.0, 1.0, len(frame))
+    frame["carts_cpu"] = 50.0 + np.random.default_rng(2).normal(0.0, 1.0, len(frame))
+    plain = featurize(frame, T_DET)
+    normed = featurize(frame, T_DET, norm_counts=True)
+    # carts and carts-db count once: cartservice, ts-order-service, front-end, carts
+    assert plain.service_counts["cpu"] == 4
+    assert plain.service_counts["mem"] == 3
+    assert plain.service_counts["diskio"] == 0
+    assert list(plain.service_counts) == list(KINDS)
+    for kind in KINDS:
+        n = plain.service_counts[kind]
+        assert plain.features[f"{kind}_abssum"] / max(n, 1) == pytest.approx(
+            normed.features[f"{kind}_absmean"], abs=1e-12
+        )
+        assert plain.features[f"{kind}_n_gt3"] / max(n, 1) == pytest.approx(
+            normed.features[f"{kind}_frac_gt3"], abs=1e-12
+        )

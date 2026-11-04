@@ -12,8 +12,10 @@ RE2 covers 3 microservice systems: Online Boutique (OB), Sock Shop (SS) and Trai
 | Suite | Download | md5 |
 |---|---|---|
 | RE2-OB | [RE2-OB.zip](https://zenodo.org/records/14590730/files/RE2-OB.zip?download=1) (about 1.1 GB) | `b9e23f8842c404b396ffd2becff15de4` (verified Nov 3) |
-| RE2-SS | [RE2-SS.zip](https://zenodo.org/records/14590730/files/RE2-SS.zip?download=1) | _TODO: copy from the Zenodo page and verify_ |
-| RE2-TT | [RE2-TT.zip](https://zenodo.org/records/14590730/files/RE2-TT.zip?download=1) | _TODO: copy from the Zenodo page and verify_ |
+| RE2-SS | [RE2-SS.zip](https://zenodo.org/records/14590730/files/RE2-SS.zip?download=1) (about 0.25 GB) | `bd747a8fc7c5be00c613e13fbf9dd74b` (verified Nov 4) |
+| RE2-TT | [RE2-TT.zip](https://zenodo.org/records/14590730/files/RE2-TT.zip?download=1) (about 2.8 GB) | `a7fbcd1ada406067dcc50771ae398408` (verified Nov 4) |
+
+"Verified" means the md5 printed by `make data` equals the checksum Zenodo publishes for the file (`https://zenodo.org/api/records/14590730`).
 
 The zips total about 4 GB, mostly logs and traces we don't use.
 
@@ -46,7 +48,11 @@ After `make data`, each case is a folder `data/raw/RE2-XX/RE2-XX/<service>_<faul
 
 The label comes from the folder name: `<service>_<fault>`, for example `cartservice_loss`.
 
-Known quirks (one case without `simple_metrics.csv`, `ts-` and `front-end` service names, `inf` values, a duplicated `time.1` column) are handled in `src/faulttrack/data.py`. See spec Section 3.3.
+Known quirks are handled in `src/faulttrack/data.py` (see spec Section 3.3):
+
+- **An extra RE2-OB folder.** `checkoutservice_cpu/` has a fourth folder, `multi-source-data/`, with only `metrics.csv` and `inject_time.txt`. Its name isn't a repetition number, so it isn't a case and is ignored. RE2-OB has 90 numbered cases, all with `simple_metrics.csv`.
+- **Rows with an empty `time`.** `checkoutservice_cpu/2` and `checkoutservice_mem/2` in RE2-OB end with 256 and 258 rows that have values but no `time`. Those rows are dropped (they can't be placed in time). Every detection window still has enough rows; only the delay-120 post window of `checkoutservice_cpu/2` is short (90 s of data instead of 120 s). A `time` cell holding text that isn't a number is still an error. See `docs/decisions.md`.
+- `ts-` and `front-end` service names, `inf` values, and a duplicated `time.1` column.
 
 ## Rebuild the feature table
 
@@ -54,4 +60,9 @@ Known quirks (one case without `simple_metrics.csv`, `ts-` and `front-end` servi
 make data && make features
 ```
 
-`make features` writes `data/features/re2_features.parquet` (about 1,350 rows: 5 detection delays per case).
+`make features` (`uv run python -m faulttrack.build`) takes about 15 s and writes two files to `data/features/`:
+
+- **`re2_features.parquet`:** 1,350 rows (270 cases × 5 detection delays), sorted by `case_id` and `delay_s`. Identity columns `case_id`, `system`, `service`, `fault`, `delay_s` and `suspect_service` (the root-cause rule's pick), then seven `n_services_<kind>` counts (services with a column of that kind after the `-db` merge, for the `--norm-counts` experiment), then the features in `FEATURE_NAMES` order. Only `FEATURE_NAMES` are model inputs.
+- **`re2_inventory.parquet`:** one row per case (270), with `status` (`ok` or the skip reason), row counts (`n_rows`, `n_untimed_rows`), metric columns in total and per kind, `nan_pct`, `inf_count`, `inject_pos` (where the injection falls in the file, 0 to 1) and `n_feature_rows`. The notebook uses it to show raw-data ranges and missing values without the raw download.
+
+The build is deterministic. To check that a rebuild matches the committed files without overwriting them, run `uv run python -m faulttrack.build --check`. It compares the data with `pandas.testing.assert_frame_equal`, not the bytes, because parquet bytes can differ across pyarrow versions.

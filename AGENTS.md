@@ -76,6 +76,8 @@ predict.py                 # course deliverable: FastAPI app (/, /predict, /pred
 src/faulttrack/
   data.py                  # case discovery, loading, dataset quirks (spec 3.3)
   features.py              # shared feature code: the ONLY place features are computed
+  evaluation.py            # the ONLY CV code: grouped_cv, leave_one_system_out, suspect_hit_rate
+  build.py                 # `make features`: writes the feature table + inventory from data/raw/
 data/raw/                  # gitignored; filled by `make data`
 data/features/             # re2_features.parquet + re2_inventory.parquet (committed) + ATTRIBUTION.md
 models/                    # model.bin + feature_spec.json (committed, small)
@@ -145,6 +147,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
    - Don't re-implement feature logic inline in the notebook.
 7. **Evaluation must be grouped by case.**
    - There are 5 windows per case, so use `GroupKFold` (or leave-one-system-out) with `groups=case_id`.
+   - Use `faulttrack.evaluation.grouped_cv` / `leave_one_system_out` rather than writing CV loops. For grouped tuning, pass `cv=list(faulttrack.evaluation.grouped_splits(df))` to `GridSearchCV`, so tuning uses the same case-grouped folds as `grouped_cv`.
    - Never use random row-level splits (`train_test_split`, plain `KFold`, `cross_val_score` without groups). They leak windows of the same case into both train and test.
    - Report macro F1 as **mean ± std (min/max) across folds**.
    - The headline is grouped 5-fold CV across all 3 systems. Leave-one-system-out is the separate "Generalizing to an unseen system" section.
@@ -166,7 +169,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
 
 **Data and features**
 - Labels come from the case folder name (`<service>_<fault>`). Build features from `simple_metrics.csv` only. Raw `metrics.csv` is stretch work.
-- Handle the known quirks in `data.py` (spec 3.3), not in callers: `ts-` and `front-end` naming, the `inf` then forward-fill then 0 sequence, the `time.1` column, and the missing `simple_metrics.csv` in `checkoutservice_cpu/4`.
+- Handle the known quirks in `data.py` (spec 3.3), not in callers: `ts-` and `front-end` naming, the `inf` then forward-fill then 0 sequence, the `time.1` column, rows with an empty `time` (dropped), and the non-case folder `checkoutservice_cpu/multi-source-data/` in RE2-OB.
 - Feature names are stable. If you rename or add one, regenerate `re2_features.parquet` and `models/feature_spec.json` in the same PR, and say so in the PR.
 
 **Notebook**

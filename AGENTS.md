@@ -77,7 +77,7 @@ src/faulttrack/
   data.py                  # case discovery, loading, dataset quirks (spec 3.3)
   features.py              # shared feature code: the ONLY place features are computed
 data/raw/                  # gitignored; filled by `make data`
-data/features/             # re2_features.parquet (committed) + ATTRIBUTION.md
+data/features/             # re2_features.parquet + re2_inventory.parquet (committed) + ATTRIBUTION.md
 models/                    # model.bin + feature_spec.json (committed, small)
 web/                       # static results page served at /
 tests/                     # parity, API smoke, unit; tests/fixtures/ holds one small real case
@@ -122,7 +122,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
 2. **Never commit secrets or large or raw data.**
    - Don't read or print `.env` or `.env.*` (`.env.example` is fine).
    - Never commit `data/raw/`, zips, `.venv*`, `.vscode/`, or credentials or tokens of any kind.
-   - The only committed data is `data/features/re2_features.parquet` (with `ATTRIBUTION.md`) and the small fixture under `tests/fixtures/`.
+   - The only committed data is `data/features/re2_features.parquet` and `data/features/re2_inventory.parquet` (with `ATTRIBUTION.md`) and the small fixture under `tests/fixtures/`.
 3. **Don't edit `.github/` or `.claude/`** (workflows or `dependabot.yaml`).
    - The agent token has no Workflows permission, so pushes that touch `.github/workflows/` are rejected.
    - Instead, put the proposed file in `docs/proposed-workflows/<name>.yaml`, and say in the PR that a human needs to move it.

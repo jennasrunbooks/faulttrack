@@ -94,7 +94,7 @@
 ### 3.5 Data handling in the repo
 
 - **Raw data:** `data/raw/` is **gitignored**. `make data` downloads it from Zenodo and extracts metrics only.
-- **Derived feature table:** `data/features/re2_features.parquet` (about 1,350 rows) is **committed**, with `ATTRIBUTION.md`, so reviewers can run the notebook and `train.py` without the 4 GB download. `make features` regenerates it.
+- **Derived feature table:** `data/features/re2_features.parquet` (about 1,350 rows) is **committed**, with `ATTRIBUTION.md`, so reviewers can run the notebook and `train.py` without the 4 GB download. `make features` regenerates it, along with `data/features/re2_inventory.parquet`: one row per case (270), with row and column counts, metric columns per kind, NaN and inf counts, and the skip reason for unusable cases. The notebook uses it to show raw-data ranges and missing values without the raw download.
 
 ---
 

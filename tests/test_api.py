@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 from sklearn.dummy import DummyClassifier
 
 import predict
+from faulttrack.build import FEATURES_FILE
 from faulttrack.data import clean_metrics, read_metrics
 from faulttrack.features import (
     BASELINE_S,
@@ -226,6 +227,64 @@ def test_missing_detection_time_is_422(client: TestClient, csv_bytes: bytes) -> 
         "/predict/case", files={"file": ("simple_metrics.csv", csv_bytes)}
     )
     assert resp.status_code == 422
+
+
+# ---------- committed fixture case ----------
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURES = ROOT / "tests" / "fixtures"
+TABLE = ROOT / "data" / "features" / FEATURES_FILE
+FIXTURE_CASE_ID = "re2ob/productcatalogservice_cpu/1"
+
+
+def _fixture_post(client: TestClient) -> Any:
+    inject_time = int((FIXTURES / "inject_time.txt").read_text().strip())
+    return _post_case(
+        client, (FIXTURES / "simple_metrics.csv").read_bytes(), inject_time
+    )
+
+
+def _fixture_row() -> pd.Series:
+    table = pd.read_parquet(TABLE)
+    rows = table[(table["case_id"] == FIXTURE_CASE_ID) & (table["delay_s"] == 0)]
+    assert len(rows) == 1
+    return rows.iloc[0]
+
+
+def test_predict_case_on_fixture(client: TestClient) -> None:
+    resp = _fixture_post(client)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) == {"fault", "suspect_service"}
+    assert body["fault"]["source"] == "model"
+    assert body["fault"]["cv_macro_f1"] == CV_F1
+    assert set(body["fault"]["probabilities"]) == set(CLASSES)
+    suspect = body["suspect_service"]
+    assert suspect["source"] == "rule"
+    assert suspect["hit_rate"] == HIT_RATE
+    assert suspect["name"] == _fixture_row()["suspect_service"]
+
+
+def test_predict_case_parity_with_feature_table(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Features built inside /predict/case equal the fixture's training row."""
+    seen: list[dict[str, float]] = []
+    real = predict._fault_block
+
+    def spy(bundle: predict.Bundle, row: dict[str, float]) -> predict.FaultBlock:
+        seen.append(dict(row))
+        return real(bundle, row)
+
+    monkeypatch.setattr(predict, "_fault_block", spy)
+    assert _fixture_post(client).status_code == 200
+    assert len(seen) == 1
+    expected = _fixture_row()
+    assert list(seen[0]) == FEATURE_NAMES
+    for name in FEATURE_NAMES:
+        assert seen[0][name] == pytest.approx(
+            float(expected.to_dict()[name]), abs=1e-9
+        ), name
 
 
 # ---------- startup ----------

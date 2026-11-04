@@ -65,7 +65,7 @@ The dashed steps need the 4 GB raw download. Everything from `re2_features.parqu
 |---|---|---|---|
 | Download | `make data` → `spike/download_rcaeval.sh` | Zenodo record 14590730 | `data/raw/RE2-{OB,SS,TT}/…/<service>_<fault>/<n>/` with `simple_metrics.csv`, `inject_time.txt` (logs and traces aren't extracted) |
 | Discover cases | `data.find_cases()` | `data/raw/` | One entry per case: system, service, fault, repetition, path. Cases without `simple_metrics.csv` are skipped with a stderr message (RE2-OB has one: `checkoutservice_cpu/4`) |
-| Load | `data.load_case()` | One case folder | Metrics frame. `inf` becomes NaN, then forward-fill, then 0. The repeated `time.1` header column is dropped, and `latency-50` is ignored |
+| Load | `data.load_case()` = `read_metrics()` + `clean_metrics()` + `inject_time.txt` + label | One case folder | Metrics frame. `inf` becomes NaN, then forward-fill, then 0. The repeated `time.1` header column is dropped, and `latency-50` is ignored. A raw Prometheus file (more than 20 `container-`/`istio-` columns) raises `ValueError`. `predict.py` cleans an uploaded CSV with the same `read_metrics()` + `clean_metrics()` |
 | Featurize | `features.featurize()` | Metrics frame + detection time | One feature row |
 | Build table | `make features` | All cases × 5 detection delays | `data/features/re2_features.parquet` (about 1,350 rows) |
 
@@ -85,7 +85,7 @@ flowchart LR
 ```
 
 **Design notes:**
-- **The features are service-agnostic.** Columns are grouped by metric *kind*, never by service name, so one model covers systems with 11, 15 or 68 services.
+- **The features are service-agnostic.** Columns are grouped by metric *kind*, never by service name, so one model covers systems with 11, 15 or 68 services. A service and its database (`carts`, `carts-db`) count as one service, keeping the larger shift of the two (see `docs/decisions.md`).
 - **Scale floor and log compression.** Without them, near-constant metrics (memory) get huge z-scores that hide everything else. In the go/no-go spike, adding them took logistic regression on RE2-OB from 0.54 to 0.85 macro F1.
 - **Missing kinds are 0, not NaN.** Some services don't export `diskio`, `latency` or `error`. A kind with no columns gets 0 for every aggregate. This is a known blind spot for disk faults: in RE2-OB, only 2 of the 5 disk-fault services expose `diskio`.
 - **Row identity columns:** `case_id`, `system`, `service`, `fault` (label), and `delay_s`. These are never model inputs. `case_id` is the CV group.

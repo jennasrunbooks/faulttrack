@@ -211,6 +211,7 @@ def test_load_case_without_inject_time_raises_os_error(tmp_path: Path) -> None:
         ("ts-order-service_cpu", ("ts-order-service", "cpu")),
         ("front-end_latency-90", ("front-end", "latency")),
         ("carts-db_mem", ("carts", "mem")),
+        ("x-db-y_cpu", ("x-db-y", "cpu")),
         ("cartservice_latency-50", None),
         ("cartservice_unknown", None),
         ("time", None),

@@ -131,6 +131,41 @@ def test_too_little_data_raises_value_error() -> None:
         featurize(frame, T0 + 1198)  # fewer than 5 post rows
 
 
+def _db_frame(shifted: str, columns: list[str]) -> pd.DataFrame:
+    """carts and carts-db cpu at about 50 +/- 1, with a +8 step on one of them."""
+    rng = np.random.default_rng(3)
+    n = 1200
+    noise = {c: 50.0 + rng.normal(0.0, 1.0, n) for c in sorted(columns)}
+    data: dict[str, np.ndarray] = {"time": np.arange(T0, T0 + n)}
+    data |= {c: noise[c] for c in columns}  # same values, given column order
+    return _step(pd.DataFrame(data), shifted, 8.0)
+
+
+@pytest.mark.parametrize("shifted", ["carts_cpu", "carts-db_cpu"])
+@pytest.mark.parametrize(
+    "columns",
+    [["carts_cpu", "carts-db_cpu"], ["carts-db_cpu", "carts_cpu"]],
+    ids=["service-first", "db-first"],
+)
+def test_service_and_db_keep_the_larger_shift(shifted: str, columns: list[str]) -> None:
+    # Regression: the -db column used to overwrite the service's own value, so
+    # a +8 step on carts_cpu with a flat carts-db_cpu came out as cpu_max 0.18.
+    result = featurize(_db_frame(shifted, columns), T_DET)
+    f = result.features
+    assert f["cpu_max"] > 2.0  # the step survives, whichever column has it
+    assert f["cpu_2nd"] == 0.0  # merged into one service
+    assert f["cpu_n_gt3"] == 1
+    assert f["top_cpu"] == f["cpu_max"]
+    assert result.suspect_service == "carts"
+
+
+def test_service_and_db_merge_is_order_independent() -> None:
+    for shifted in ("carts_cpu", "carts-db_cpu"):
+        a = featurize(_db_frame(shifted, ["carts_cpu", "carts-db_cpu"]), T_DET)
+        b = featurize(_db_frame(shifted, ["carts-db_cpu", "carts_cpu"]), T_DET)
+        assert a == b
+
+
 # ---------- shift_scores ----------
 
 

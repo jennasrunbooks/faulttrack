@@ -223,8 +223,9 @@ def kind_of(column: str) -> tuple[str, str] | None:
     """Map a metric column to (service, kind), or ``None`` if it isn't used.
 
     ``'cartservice_latency-90'`` -> ``('cartservice', 'latency')``. The service
-    is the text before the first ``_``, with a ``-db`` suffix removed so a
-    service and its database count as one service (``carts-db`` -> ``carts``).
+    is the text before the first ``_``, with a trailing ``-db`` removed so a
+    service and its database count as one service (``carts-db`` -> ``carts``;
+    ``featurize`` keeps the larger of the two shifts).
     ``ts-`` and ``front-end`` names are kept as they are. ``latency-50``,
     ``time`` and unknown kinds return ``None``.
     """
@@ -240,5 +241,5 @@ def kind_of(column: str) -> tuple[str, str] | None:
             or (kind == "diskio" and "disk" in metric)
             or (kind == "error" and "err" in metric)
         ):
-            return service.replace("-db", ""), kind
+            return service.removesuffix("-db"), kind
     return None

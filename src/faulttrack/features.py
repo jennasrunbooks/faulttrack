@@ -128,6 +128,10 @@ def featurize(
     ``<service>_<metric>`` columns). ``t_det``, ``baseline_s`` and ``post_s``
     are in seconds. Shift scores are log-compressed z when ``log_z``.
 
+    A service and its ``-db`` (``carts`` and ``carts-db``) count as one
+    service. When both have a column of the same kind, the shift with the
+    larger magnitude is kept, whatever the column order.
+
     Per kind: ``<kind>_max`` is the shift with the largest magnitude (signed),
     ``<kind>_2nd`` the next one, ``<kind>_abssum`` the sum of |shift| and
     ``<kind>_n_gt3`` how many services shifted by more than 3 (on the same
@@ -160,8 +164,11 @@ def featurize(
         if mapped is None:
             continue
         service, kind = mapped
-        by_kind[kind][service] = float(value)
-        by_service[service][kind] = float(value)
+        # A service and its "-db" share one (service, kind) slot: keep the
+        # larger shift, so the result doesn't depend on column order.
+        shift = _stronger(float(value), by_kind[kind].get(service))
+        by_kind[kind][service] = shift
+        by_service[service][kind] = shift
 
     threshold = float(np.log1p(_SHIFT_THRESHOLD)) if log_z else _SHIFT_THRESHOLD
     features: dict[str, float] = {}
@@ -188,6 +195,13 @@ def featurize(
         features[f"top_{kind}"] = value
         features[f"top_{kind}_share"] = abs(value) / total
     return Featurized(features=features, suspect_service=suspect)
+
+
+def _stronger(new: float, current: float | None) -> float:
+    """The shift with the larger magnitude; on a tie, the larger signed value."""
+    if current is None:
+        return new
+    return max(new, current, key=lambda v: (abs(v), v))
 
 
 def suspect_service(by_service: dict[str, dict[str, float]]) -> str | None:

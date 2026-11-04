@@ -39,3 +39,11 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 - Rows with delay 0 are unchanged from the spike.
 - For delays of 30–120 s (1,080 of the 1,350 rows), the baseline now already includes some fault data, as it would for a real alert that fires late. The shifts get smaller as the delay grows.
 - The headline (spike: RF 0.828 ± 0.039) may move when the feature table is rebuilt in #7. That is expected and is reported there with before/after mean ± std.
+
+## 2026-11-04: A service and its `-db` keep the larger shift
+
+**Decision:** when a service and its database (`carts` and `carts-db`) both have a column of the same kind, `features.featurize()` keeps the shift with the larger magnitude (on an exact tie, the larger signed value), for both the per-kind aggregates and the suspect service's profile. `data.kind_of()` now strips only a trailing `-db` (`removesuffix`), not `-db` anywhere in the name. Decided by Jenna in [review of PR #14](https://github.com/jennasrunbooks/faulttrack/pull/14#issuecomment-6640120673). This is the second intended difference from the spike, after the window anchoring above.
+
+**Why:** the spike mapped both columns to the same `(service, kind)` key and assigned into a dict, so whichever column came later overwrote the other. That is a bug, not a modeling choice. A +8 step on `carts_cpu` with a flat `carts-db_cpu` after it gave `cpu_max` −0.14 instead of about 2.1, so the injected shift vanished from the features. The result also depended on column order.
+
+**What it changes:** only cases from systems with `-db` services sharing a kind with their service, which in RE2 means Sock Shop (`re2ss`). For `re2ob` and `re2tt`, delay-0 rows stay identical to the spike. The effect on the headline and on the root-cause hit rate is reported in #7, when the feature table is rebuilt.

@@ -6,6 +6,18 @@ Guidelines for AI coding agents (Claude Code as `jksprattler-agent`) and humans 
 - **This file** is *how* to work here.
 - **If the two disagree,** stop and ask. Don't pick one silently.
 
+## Before your first edit on any issue
+
+This file is loaded automatically at the start of every session. The other docs are not, so before you change any file:
+
+1. **Read the issue, including its comments:** `gh issue view <n> --comments`. Comments can change the scope after the issue was written.
+2. **Read [docs/agent-team.md](docs/agent-team.md)** if this is your first issue in this clone. It covers roles, the issue → PR flow, and the rules for parallel agents.
+3. **Read the spec sections the issue lists,** plus [product-spec.md §10](product-spec.md#10-plan-to-16-november-2026) for the plan line and its target date.
+4. **Read the doc for the area you're touching** (see the table below). For example, read `docs/architecture.md` before changing code in `src/faulttrack/`.
+5. **Start from an up-to-date `main`:** `git switch main && git pull`, then `git switch -c ws-<n>-<short-desc>`.
+
+In the PR, say which of these you read. If the issue, this file and the spec disagree, comment on the issue and stop; don't guess.
+
 ## What FaultTrack is
 
 FaultTrack is a DataTalksClub ML Zoomcamp 2026 midterm project.
@@ -47,7 +59,7 @@ This file is the entry point. Before starting a workstream, read the doc for the
 | Modelling | scikit-learn, XGBoost; Jupyter for the notebook | `notebook.ipynb`, `train.py` |
 | Serving | FastAPI, Pydantic v2, uvicorn | `predict.py`, `web/` |
 | Tests | pytest, httpx (FastAPI `TestClient`) | `tests/` |
-| Lint / types | Ruff (lint + format), Pyright / Pylance | settings in `pyproject.toml` |
+| Lint / types | Ruff (lint + format), basedpyright (a Pyright fork from PyPI that ships Node as a wheel, so nothing is downloaded at run time; reads `[tool.pyright]`, the same settings Pylance uses in VS Code) | settings in `pyproject.toml` |
 | Container | Docker (service image) | `Dockerfile` |
 | Hosting | Fly.io (scale-to-zero, 512 MB) | `fly.toml` |
 | CI | GitHub Actions (path-aware jobs + `ci-ok` gate), Dependabot | `.github/` (human-edited only) |
@@ -84,6 +96,7 @@ Run everything from the repo root inside the devcontainer. Prefer `make` targets
 | Install / sync the environment | `uv sync` |
 | Unit tests (fast; run before every commit) | `make test` (`uv run pytest`) |
 | Lint + format check | `make lint` (`uv run ruff check .` and `uv run ruff format --check .`) |
+| Type check | `make typecheck` (`uv run basedpyright`) |
 | Auto-fix lint and formatting | `uv run ruff check --fix .` and `uv run ruff format .` |
 | Download raw data (about 4 GB of zips; metrics only are kept) | `make data` |
 | Rebuild the committed feature table | `make features` |
@@ -146,7 +159,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
 
 **Python**
 - Python 3.12. Ruff settings are in `pyproject.toml` (line length 88; rules E4, E7, E9, F, I, B, UP). Imports go one per line, sorted by Ruff.
-- Pylance/Pyright must show no errors in the files you changed.
+- `make typecheck` (`uv run basedpyright`) must show no errors in the files you changed. It reads `[tool.pyright]` with `typeCheckingMode = "standard"`, the same settings Pylance uses, so it matches what the maintainer sees in VS Code.
 - Type hints on public functions in `src/faulttrack/`. Docstrings say what a function expects and returns, including units: seconds, and z-scores after log compression.
 - Catch narrow exceptions (`OSError`, `ValueError`, `KeyError`), never a bare `except`. When a dataset case can't be read, skip it with a message on stderr. Never fill it silently.
 - Use `with open(...)` for files and `pathlib` for paths. No hardcoded absolute paths.
@@ -191,6 +204,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
    - lists how it was tested: the commands and their results, including metrics as mean ± std where the change affects them
    - calls out any change to features, the evaluation setup, dependencies or committed data
    - lists any spec change you think is needed (see below)
+   - lists the docs you read before starting (see "Before your first edit on any issue")
 6. **Merging:** squash merge is the default, and a human merges.
 
 **The spec:** agents don't edit `product-spec.md`. The maintainer owns it and marks the plan's Status column. Propose changes in the PR description.

@@ -286,10 +286,10 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 **Rules:**
 - **Never run `uv` on the Mac against the repo's `.venv`.** It contains Linux binaries. Mac runs, if any, use `UV_PROJECT_ENVIRONMENT=.venv-mac` and `uv sync --frozen`.
 - **Package layout:** `src/faulttrack/`. `pyproject.toml` has a `[build-system]` (hatchling: `requires = ["hatchling"]`, `build-backend = "hatchling.build"`), so `uv sync` installs `faulttrack` into `.venv` as an editable package. Root scripts then `import faulttrack` with no `sys.path` tricks. Tests run against the installed package, which catches packaging mistakes early.
-- **Tool settings live in `pyproject.toml`:** `[tool.ruff]` (line length 88; rules E4, E7, E9, F, I, B, UP) and `[tool.pyright]` (`venvPath = "."`, `venv = ".venv"`).
+- **Tool settings live in `pyproject.toml`:** `[tool.ruff]` (line length 88; rules E4, E7, E9, F, I, B, UP) and `[tool.pyright]` (`venvPath = "."`, `venv = ".venv"`, `typeCheckingMode = "standard"`). basedpyright reads `[tool.pyright]`, so don't also add a `[tool.basedpyright]` section (having both is an error).
 - **Runtime vs. dev dependencies:**
-  - **runtime:** pandas, pyarrow, scikit-learn, xgboost, fastapi, uvicorn
-  - **dev:** matplotlib, jupyter, ipykernel, ruff, pytest, httpx
+  - **runtime:** pandas, numpy, pyarrow, scikit-learn, xgboost, fastapi, uvicorn, python-multipart (file uploads for `/predict/case`)
+  - **dev:** matplotlib, jupyter, ipykernel, ruff, basedpyright, pytest, httpx. basedpyright is a Pyright fork on PyPI that ships Node as a wheel (`nodejs-wheel-binaries`), so type checking never downloads anything at run time.
 
 ---
 
@@ -330,7 +330,7 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 | 11 | Cloud deployment | Fly.io app; `fly.toml`; `faulttrack.jennasrunbooks.com` (certs + DNS); screenshots or video | Fri Nov 13 | ☐ |
 | 12 | README + results page | Problem, data + credit, EDA highlights, results, generalization section, setup / run / Docker / deploy, rubric map; `web/index.html`; `REVIEWING.md` links and commands checked, "Numbers" table filled in line 13 | Sat Nov 14 | ☐ |
 | 13 | Reproducibility check | Fresh clone in a new devcontainer: `make features` → notebook → `train.py` → `predict.py` → Docker → live URL; fix anything that breaks | Sun Nov 15 | ☐ |
-| 14 | **Submit** | Tag `midterm-submission` on the submitted commit; submit on the course platform | **Mon Nov 16, before 17:00** | ☐ |
+| 14 | **Submit** | On `main`: `git switch main && git pull`, `git tag -a midterm-submission -m "ML Zoomcamp 2026 midterm submission"`, `git push origin midterm-submission`; publish it as a GitHub release; submit the tag URL on the course platform | **Mon Nov 16, before 17:00** | ☐ |
 **PR CI design (`ci.yaml`).** Jobs run only when the files they check change, so a docs-only PR finishes in seconds:
 
 | Job | Runs when the PR touches | Does |
@@ -359,7 +359,6 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 - **Schedule:** weekly. Minor and patch updates are **grouped** into one PR per ecosystem, so there's less noise. Major updates come as separate PRs.
 - **Security updates** (Settings → Advanced Security): on. They open PRs immediately for known CVEs, regardless of the schedule.
 - **CI:** Dependabot PRs go through the same path-aware CI. A `uv.lock` change triggers `test` and `docker`.
-- **Freeze:** from **Fri Nov 13 until grading closes**, merge only security updates. Version bumps wait, so the submitted lockfile stays the one that was tested.
 
 **Buffer:** lines 7 and 12 are the flexible ones. If the schedule slips, cut the relative-features experiment (line 7) first, and never cut lines 5, 6, 12 or 13.
 
@@ -379,7 +378,7 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 
 ---
 
-## 12. Stretch (after grading closes; on a branch until then)
+## 12. Stretch (after the Nov 16 deadline)
 
 - **Raw-metric features from `metrics.csv`:**
   - `container-fs-*` and `container-blkio-*` for disk
@@ -405,7 +404,7 @@ These also go into `AGENTS.md`.
 - **Read this spec before starting any workstream.** Implement only what the current workstream (Section 10) needs, and don't start stretch items before line 14 (submission).
 - **Branches:**
   - **Before submission:** work on branches named `ws-<n>-<short-name>` (e.g. `ws-4-features`) and open pull requests against `main`. The maintainer reviews and merges.
-  - **After submission:** don't push to `main` until grading closes (the week after the deadline), and never move or delete the `midterm-submission` tag.
+  - **After submission:** never move or delete the `midterm-submission` tag (a tag ruleset enforces this).
 - **Code rules:**
   - Write all code fresh for this repo. **Don't copy code** from other projects, other students or prior course iterations.
   - Keep the course deliverables at the repo root (`train.py`, `predict.py`, `notebook.ipynb`, `Dockerfile`, `README.md`).
@@ -416,7 +415,7 @@ These also go into `AGENTS.md`.
 - **Environment:**
   - Run Python only via `uv run …` in the devcontainer.
   - Change dependencies only with `uv add` / `uv remove`, and commit `pyproject.toml` + `uv.lock` together.
-- **Before opening a PR:** `uv run ruff check .` and `uv run pytest` both pass, and Pylance shows no errors in changed files. CI runs the same checks, and a PR merges only when CI is green.
+- **Before opening a PR:** `uv run ruff check .` and `uv run pytest` both pass, and `make typecheck` (basedpyright) shows no errors in changed files. CI runs the same checks, and a PR merges only when CI is green.
 - **Dependabot PRs** are reviewed and merged by the maintainer. The agent doesn't merge or rebase them.
 - **Workflow files:** the agent's PAT has no `Workflows` permission, so changes to `.github/workflows/` are made by the maintainer. The agent puts proposed files in `docs/proposed-workflows/<name>.yaml` and says so in the PR.
 - **Results:** report metrics as mean ± std across folds, with grouped CV. Never use random row-level splits (windows from one case would leak).

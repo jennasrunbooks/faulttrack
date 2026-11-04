@@ -72,7 +72,7 @@ def test_find_cases_yields_one_record_per_case(tmp_path: Path) -> None:
 def test_find_cases_skips_raw_only_case_with_message(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    # spec 3.3: RE2-OB checkoutservice_cpu/4 has metrics.csv but no simple_metrics
+    # a raw-only case folder (metrics.csv but no simple_metrics.csv); RE2 has none
     _write_case(tmp_path, "RE2-OB", "checkoutservice_cpu", 4, simple=False, raw=True)
     _write_case(tmp_path, "RE2-OB", "checkoutservice_cpu", 5)
     cases = list(find_cases(tmp_path))

@@ -149,7 +149,8 @@ def _db_frame(shifted: str, columns: list[str]) -> pd.DataFrame:
 )
 def test_service_and_db_keep_the_larger_shift(shifted: str, columns: list[str]) -> None:
     # Regression: the -db column used to overwrite the service's own value, so
-    # a +8 step on carts_cpu with a flat carts-db_cpu came out as cpu_max 0.18.
+    # a +8 step on carts_cpu followed by a flat carts-db_cpu came out near 0
+    # (-0.14 for this frame).
     result = featurize(_db_frame(shifted, columns), T_DET)
     f = result.features
     assert f["cpu_max"] > 2.0  # the step survives, whichever column has it

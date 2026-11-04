@@ -85,7 +85,7 @@ flowchart LR
 ```
 
 **Design notes:**
-- **The features are service-agnostic.** Columns are grouped by metric *kind*, never by service name, so one model covers systems with 11, 15 or 68 services.
+- **The features are service-agnostic.** Columns are grouped by metric *kind*, never by service name, so one model covers systems with 11, 15 or 68 services. A service and its database (`carts`, `carts-db`) count as one service, keeping the larger shift of the two (see `docs/decisions.md`).
 - **Scale floor and log compression.** Without them, near-constant metrics (memory) get huge z-scores that hide everything else. In the go/no-go spike, adding them took logistic regression on RE2-OB from 0.54 to 0.85 macro F1.
 - **Missing kinds are 0, not NaN.** Some services don't export `diskio`, `latency` or `error`. A kind with no columns gets 0 for every aggregate. This is a known blind spot for disk faults: in RE2-OB, only 2 of the 5 disk-fault services expose `diskio`.
 - **Row identity columns:** `case_id`, `system`, `service`, `fault` (label), and `delay_s`. These are never model inputs. `case_id` is the CV group.

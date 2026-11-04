@@ -128,9 +128,9 @@ def featurize(
     ``<service>_<metric>`` columns). ``t_det``, ``baseline_s`` and ``post_s``
     are in seconds. Shift scores are log-compressed z when ``log_z``.
 
-    A service and its ``-db`` (``carts`` and ``carts-db``) count as one
-    service. When both have a column of the same kind, the shift with the
-    larger magnitude is kept, whatever the column order.
+    When two columns map to the same (service, kind), in practice a service
+    and its ``-db`` (``carts`` and ``carts-db``), the shift with the larger
+    magnitude is kept, whatever the column order.
 
     Per kind: ``<kind>_max`` is the shift with the largest magnitude (signed),
     ``<kind>_2nd`` the next one, ``<kind>_abssum`` the sum of |shift| and
@@ -164,8 +164,8 @@ def featurize(
         if mapped is None:
             continue
         service, kind = mapped
-        # A service and its "-db" share one (service, kind) slot: keep the
-        # larger shift, so the result doesn't depend on column order.
+        # Columns sharing a (service, kind) slot (in practice a service and its
+        # "-db"): keep the larger shift, so column order doesn't matter.
         shift = _stronger(float(value), by_kind[kind].get(service))
         by_kind[kind][service] = shift
         by_service[service][kind] = shift

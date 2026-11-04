@@ -131,9 +131,26 @@ uv run pytest                            # tests
 
 ```bash
 curl -s localhost:8080/healthz
-curl -s -F file=@tests/fixtures/simple_metrics.csv -F detection_time=<TBD> \
-     localhost:8080/predict/case | python -m json.tool
+
+# The fixture is one real RE2 case. Its injection time is the detection time
+# (a detection delay of 0 s).
+curl -s -F file=@tests/fixtures/simple_metrics.csv \
+     -F detection_time="$(cat tests/fixtures/inject_time.txt)" \
+     localhost:8080/predict/case | uv run python -m json.tool
 ```
+
+The response has two separately labeled answers (shape shown; values come from the trained model and `web/results.json`):
+
+```json
+{
+  "fault": {"label": "...", "probabilities": {"...": 0.0}, "top_signals": ["..."],
+            "source": "model", "model_version": "...", "cv_macro_f1": 0.0},
+  "suspect_service": {"name": "...", "source": "rule", "rule": "most anomalous service: ...",
+                      "hit_rate": 0.0}
+}
+```
+
+`tests/fixtures/README.md` names the source case and its true fault, so you can check the prediction. To call the live service instead, replace `localhost:8080` with `https://faulttrack.jennasrunbooks.com`.
 
 ## Docker
 

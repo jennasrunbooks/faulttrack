@@ -337,8 +337,8 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 | # | Workstream | Deliverables | Target date | Status |
 |---|---|---|---|---|
 | 1 | Go/no-go | Data downloaded and verified (md5); EDA; spike on all 3 systems; decision logged | Tue Nov 3 | Done (Nov 3) |
-| 2 | Repo access | `jksprattler-agent` fine-grained PAT scoped to `jennasrunbooks/faulttrack`; `dev-agent` env updated | Tue Nov 3 | ☐ |
-| 3 | Repo scaffold | `product-spec.md`, `AGENTS.md`, `LICENSE`, `.gitignore`, `.devcontainer/`, `pyproject.toml` (deps + `[build-system]` + ruff + pyright), `src/faulttrack/__init__.py`, `uv.lock`, `Makefile` skeleton, `data/README.md`, `data/features/ATTRIBUTION.md`; **PR CI** `.github/workflows/ci.yaml`, path-aware (see below); branch protection on `main` requiring the single `ci-ok` check; `.github/dependabot.yaml` + Dependabot security alerts on (see below) | Wed Nov 4 | ☐ |
+| 2 | Repo access | `jksprattler-agent` fine-grained PAT scoped to `jennasrunbooks/faulttrack`; `dev-agent` env updated | Tue Nov 3 | Done (Nov 4) |
+| 3 | Repo scaffold | `product-spec.md`, `AGENTS.md`, `LICENSE`, `.gitignore`, `.devcontainer/`, `pyproject.toml` (deps + `[build-system]` + ruff + pyright), `src/faulttrack/__init__.py`, `uv.lock`, `Makefile` skeleton, `data/README.md`, `data/features/ATTRIBUTION.md`; **PR CI** `.github/workflows/ci.yaml`, path-aware (see below); branch protection on `main` requiring the single `ci-ok` check; `.github/dependabot.yaml` + Dependabot security alerts on (see below) | Wed Nov 4 | Done (Nov 4) |
 | 4 | Shared library | `src/faulttrack/data.py` + `features.py` ported from `spike/`; parity test fixture; `make data`, `make features`; committed `re2_features.parquet` | Thu Nov 5 | ☐ |
 | 5 | Notebook: prep + EDA | Data prep, quirks, class balance, per-fault signature plots, disk telemetry gap, scaling before/after, system-size table, mutual information + correlation | Sat Nov 7 | ☐ |
 | 6 | Notebook: models | Dummy, rule baseline, LR, DT (runbook), RF, XGBoost; grouped CV with tuning; per-class metrics; confusion matrix; ROC AUC; detection-delay curve; final model choice | Mon Nov 9 | ☐ |

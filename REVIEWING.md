@@ -43,7 +43,7 @@ git checkout midterm-submission
 
 1. **Problem and results:** read [README.md](README.md), especially "Problem", "Results" and "Generalizing to an unseen system".
 2. **Notebook:** open [notebook.ipynb](notebook.ipynb) on GitHub. It's committed with outputs, so it renders without running.
-3. **Live API:** open https://faulttrack.jennasrunbooks.com/docs and use **Try it out** on `POST /predict/case`. Upload [tests/fixtures/simple_metrics.csv](tests/fixtures/) with the detection time given in the README.
+3. **Live API:** open https://faulttrack.jennasrunbooks.com/docs and use **Try it out** on `POST /predict/case`. Upload [tests/fixtures/simple_metrics.csv](tests/fixtures/), and set `detection_time` to the number in [tests/fixtures/inject_time.txt](tests/fixtures/inject_time.txt). [tests/fixtures/README.md](tests/fixtures/README.md) names the case's true fault, so you can check the answer.
 4. **Results page:** open https://faulttrack.jennasrunbooks.com/ for the results summary, confusion matrix and decision tree.
 
 **Local path:**
@@ -62,8 +62,9 @@ uv run pytest                            # parity + API tests
 
 ```bash
 curl -s localhost:8080/healthz
-curl -s -F file=@tests/fixtures/simple_metrics.csv -F detection_time=<see README> \
-     localhost:8080/predict/case | python -m json.tool
+curl -s -F file=@tests/fixtures/simple_metrics.csv \
+     -F detection_time="$(cat tests/fixtures/inject_time.txt)" \
+     localhost:8080/predict/case | uv run python -m json.tool
 ```
 
 **Docker path:**

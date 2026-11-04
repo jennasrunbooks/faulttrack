@@ -54,4 +54,4 @@ Known quirks (one case without `simple_metrics.csv`, `ts-` and `front-end` servi
 make data && make features
 ```
 
-`make features` writes `data/features/re2_features.csv` (about 1,350 rows: 5 detection delays per case).
+`make features` writes `data/features/re2_features.parquet` (about 1,350 rows: 5 detection delays per case).

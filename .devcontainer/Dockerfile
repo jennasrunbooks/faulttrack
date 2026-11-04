@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:1-3.12-bookworm
+FROM mcr.microsoft.com/devcontainers/python:3.15-bookworm
 
 # unzip: extracting metrics-only from the RCAEval Zenodo zips (spike/download_rcaeval.sh).
 # libgomp1: OpenMP runtime used by XGBoost and scikit-learn.

@@ -76,7 +76,8 @@
 
 ### 3.3 Known quirks (handled in `src/faulttrack/data.py`)
 
-- **RE2-OB has 91 cases:** `checkoutservice_cpu/4` has no `simple_metrics.csv` and is skipped, leaving 90.
+- **RE2-OB has 91 folders but 90 cases:** the 91st, `checkoutservice_cpu/multi-source-data/`, isn't a numbered case (it has only `metrics.csv` and `inject_time.txt`), so `find_cases()` ignores it.
+- **Rows with an empty `time` are dropped:** `checkoutservice_cpu/2` and `checkoutservice_mem/2` end with about 256 such rows. Their timed rows still cover every window. A non-numeric `time` is still an error.
 - **Raw-only cases** (no `simple_metrics.csv`) are skipped with a message, never silently featurized.
 - **Naming:** Train Ticket names are prefixed `ts-`, and Sock Shop's frontend is `front-end`.
 - **Gaps and `inf` values:** replace `inf` with NaN, forward-fill, then fill with 0. Drop any `time.1` column (a repeated-header quirk in some suites).
@@ -94,7 +95,7 @@
 ### 3.5 Data handling in the repo
 
 - **Raw data:** `data/raw/` is **gitignored**. `make data` downloads it from Zenodo and extracts metrics only.
-- **Derived feature table:** `data/features/re2_features.parquet` (about 1,350 rows) is **committed**, with `ATTRIBUTION.md`, so reviewers can run the notebook and `train.py` without the 4 GB download. `make features` regenerates it, along with `data/features/re2_inventory.parquet`: one row per case (270), with row and column counts, metric columns per kind, NaN and inf counts, and the skip reason for unusable cases. The notebook uses it to show raw-data ranges and missing values without the raw download.
+- **Derived feature table:** `data/features/re2_features.parquet` (1,350 rows: 270 cases × 5 detection delays) is **committed**, with `ATTRIBUTION.md`, so reviewers can run the notebook and `train.py` without the 4 GB download. `make features` regenerates it, along with `data/features/re2_inventory.parquet`: one row per case (270), with row and column counts, metric columns per kind, NaN and inf counts, and the skip reason for unusable cases. The notebook uses it to show raw-data ranges and missing values without the raw download.
 
 ---
 
@@ -153,7 +154,7 @@ These numbers come from the spike scripts (`spike/`), not from tuned final model
 | RE2-OB only, raw z | RF 0.704 ± 0.097 · XGB 0.647 · LR 0.543 · majority 0.048 |
 | RE2-OB only, floor + log z | XGB **0.917 ± 0.076** · HGB 0.906 · RF 0.900 · LR 0.847 |
 | **All 3 systems, grouped 5-fold** | **RF 0.828 ± 0.039** (min 0.769, max 0.875) · XGB 0.820 · HGB 0.819 · LR 0.673 · majority 0.048 |
-| Root-cause rule (no ML), 3 systems | **0.853** |
+| Root-cause rule (no ML), 3 systems | **0.853** (graded feature table, #7: 0.900 per detection window, after the `-db` fix) |
 | Leave-one-system-out, HGB | OB 0.521 · SS 0.275 · TT 0.296 · mean **0.364 ± 0.112** |
 | Leave-one-system-out, HGB, `--norm-counts` | mean 0.335 ± 0.118 (LR on TT 0.13 → 0.35) |
 
@@ -202,7 +203,7 @@ Example response:
 | Field | Comes from | Accuracy reported with it |
 |---|---|---|
 | `fault` | **The trained classifier** (`model.bin`) | `cv_macro_f1`: grouped 5-fold CV macro F1 across the 3 systems (go/no-go spike: 0.83) |
-| `suspect_service` | **A rule, not the model:** the most anomalous service. No ML is involved | `hit_rate`: share of RE2 cases where the rule names the injected service (go/no-go spike: 0.853) |
+| `suspect_service` | **A rule, not the model:** the most anomalous service. No ML is involved | `hit_rate`: share of RE2 cases where the rule names the injected service (go/no-go spike: 0.853; feature table from #7: 0.900) |
 
 - **Where the numbers come from:** `train.py` writes both to `web/results.json`, and `predict.py` reads them at startup. They're never hardcoded.
 - **Where it's documented:** the OpenAPI descriptions for these fields (shown at `/docs`) and the README state the same thing, so nobody reads `suspect_service` as an ML prediction.
@@ -258,13 +259,16 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 │   ├── README.md           # download + checksums + extraction
 │   ├── raw/                # gitignored
 │   └── features/
-│       ├── re2_features.parquet
+│       ├── re2_features.parquet   # 1,350 rows: identity + metadata columns, then FEATURE_NAMES
+│       ├── re2_inventory.parquet  # one row per case: counts, NaN/inf, skip reason
 │       └── ATTRIBUTION.md
 ├── src/
 │   └── faulttrack/         # Python package (src layout), installed into the venv by uv sync
 │       ├── __init__.py
 │       ├── features.py     # shared feature code: `from faulttrack import features` in train.py + predict.py
-│       └── data.py         # case discovery + loading + quirks
+│       ├── data.py         # case discovery + loading + quirks
+│       ├── evaluation.py   # the only CV code: grouped_cv, leave_one_system_out, suspect_hit_rate
+│       └── build.py        # `make features`: feature table + inventory from data/raw/
 ├── docs/
 │   ├── images/             # README figures + deployment screenshots (cloud-deployment evidence)
 │   ├── architecture.md     # pipeline, module boundaries, artifacts, serving, deployment, CI

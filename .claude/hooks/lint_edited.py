@@ -8,8 +8,12 @@ from pathlib import Path
 
 
 def run(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["uv", "run", "--quiet", "ruff", *args],
-                          capture_output=True, text=True, check=False)
+    return subprocess.run(
+        ["uv", "run", "--quiet", "ruff", *args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 def main() -> int:
@@ -22,8 +26,10 @@ def main() -> int:
     run("format", "--quiet", path)
     left = run("check", "--quiet", path)
     if left.returncode != 0:
-        print(f"ruff found issues it couldn't fix in {path}:\n{left.stdout}",
-              file=sys.stderr)
+        print(
+            f"ruff found issues it couldn't fix in {path}:\n{left.stdout}",
+            file=sys.stderr,
+        )
         return 2
     return 0
 

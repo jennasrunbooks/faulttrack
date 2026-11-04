@@ -18,14 +18,19 @@ def main() -> int:
         try:
             out = subprocess.run(
                 ["gh", "issue", "view", n, "--repo", REPO, "--comments"],
-                capture_output=True, text=True, timeout=15, check=False,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
             )
         except (OSError, subprocess.TimeoutExpired):
             continue
         if out.returncode == 0 and out.stdout.strip():
             body = out.stdout[:MAX_CHARS]
-            print(f"<issue number=\"{n}\" source=\"gh issue view {n} --comments\">\n"
-                  f"{body}\n</issue>")
+            print(
+                f'<issue number="{n}" source="gh issue view {n} --comments">\n'
+                f"{body}\n</issue>"
+            )
     return 0
 
 

@@ -27,9 +27,13 @@ def main() -> int:
     root = Path(os.environ.get("CLAUDE_PROJECT_DIR", "."))
     today = date.today()
     left = (DEADLINE - today).days
-    print(f"FaultTrack session brief. Today is {today:%a %b %d, %Y}. "
-          f"Deadline: Mon Nov 16, 2026, 17:00 ({left} days left).")
-    print("Before your first edit, follow 'Before your first edit on any issue' in AGENTS.md.")
+    print(
+        f"FaultTrack session brief. Today is {today:%a %b %d, %Y}. "
+        f"Deadline: Mon Nov 16, 2026, 17:00 ({left} days left)."
+    )
+    print(
+        "Before your first edit, follow 'Before your first edit on any issue' in AGENTS.md."
+    )
     try:
         table = plan_table((root / "product-spec.md").read_text(encoding="utf-8"))
     except OSError:

@@ -1,0 +1,37 @@
+# PROPOSED: move to .github/dependabot.yaml
+# Issue: #4   Plan line: 3
+# Why: weekly dependency updates for uv, GitHub Actions and Docker base images, minor + patch grouped per ecosystem
+# Secrets/permissions needed: none (turn on Dependabot alerts and security updates in Settings -> Advanced Security)
+
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      uv-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    labels: [dependencies]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    labels: [dependencies, ci]
+
+  # "/" has no Dockerfile until plan line 10; Dependabot reports nothing to update there until then.
+  - package-ecosystem: docker
+    directories: [/, /.devcontainer]
+    schedule:
+      interval: weekly
+    groups:
+      docker-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    labels: [dependencies, docker]

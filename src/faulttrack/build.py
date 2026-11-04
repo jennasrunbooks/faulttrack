@@ -10,7 +10,8 @@ Writes two files to ``data/features/``:
 - ``re2_features.parquet``: one row per usable case and detection delay
   (0, 30, 60, 90, 120 s), with the identity columns ``case_id``, ``system``,
   ``service``, ``fault``, ``delay_s`` and ``suspect_service`` (the root-cause
-  rule's pick, never a model input), then ``FEATURE_NAMES``.
+  rule's pick), the seven ``n_services_<kind>`` counts, then ``FEATURE_NAMES``.
+  Only ``FEATURE_NAMES`` are model inputs.
 - ``re2_inventory.parquet``: one row per case folder, skipped ones included,
   with its size, metric columns per kind, missing values and skip reason.
 
@@ -58,6 +59,14 @@ ID_COLUMNS: list[str] = [
 ]
 """Identity columns of the feature table, before ``FEATURE_NAMES``. Never inputs."""
 
+SERVICE_COUNT_COLUMNS: list[str] = [f"n_services_{kind}" for kind in KINDS]
+"""Per kind, services with at least one column of that kind (after the ``-db``
+merge), from ``Featurized.service_counts``. Metadata for the ``norm_counts``
+experiment (plan line 7); never model inputs."""
+
+META_COLUMNS: list[str] = ID_COLUMNS + SERVICE_COUNT_COLUMNS
+"""All non-feature columns, in order, before ``FEATURE_NAMES``."""
+
 INVENTORY_COLUMNS: list[str] = [
     "case_id",
     "system",
@@ -103,6 +112,7 @@ def case_feature_rows(
                 "fault": case.fault,
                 "delay_s": int(delay),
                 "suspect_service": result.suspect_service,
+                **{f"n_services_{kind}": result.service_counts[kind] for kind in KINDS},
                 **result.features,
             }
         )
@@ -168,7 +178,7 @@ def build_tables(
     """Build the feature table and the inventory from the raw RE2 cases.
 
     ``root`` is the folder ``make data`` fills (``data/raw``). Returns
-    ``(features, inventory)``: the feature table has ``ID_COLUMNS`` then
+    ``(features, inventory)``: the feature table has ``META_COLUMNS`` then
     ``FEATURE_NAMES``, sorted by ``case_id`` and ``delay_s``; the inventory has
     ``INVENTORY_COLUMNS``, one row per case folder, sorted by ``case_id``.
     Unreadable cases are skipped with a message on stderr and get their reason
@@ -202,8 +212,10 @@ def build_tables(
 
 
 def _features_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
-    frame = pd.DataFrame(rows, columns=ID_COLUMNS + FEATURE_NAMES)
-    frame = frame.astype({"delay_s": "int64"})
+    frame = pd.DataFrame(rows, columns=META_COLUMNS + FEATURE_NAMES)
+    frame = frame.astype(
+        {"delay_s": "int64", **dict.fromkeys(SERVICE_COUNT_COLUMNS, "int64")}
+    )
     frame = frame.sort_values(["case_id", "delay_s"], kind="mergesort")
     return frame.reset_index(drop=True)
 
@@ -259,8 +271,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.check:
         try:
-            pd.testing.assert_frame_equal(features, pd.read_parquet(features_path))
-            pd.testing.assert_frame_equal(inventory, pd.read_parquet(inventory_path))
+            pd.testing.assert_frame_equal(
+                features, pd.read_parquet(features_path), check_exact=True
+            )
+            pd.testing.assert_frame_equal(
+                inventory, pd.read_parquet(inventory_path), check_exact=True
+            )
         except (AssertionError, OSError) as e:
             print(f"check failed: {e}", file=sys.stderr)
             return 1

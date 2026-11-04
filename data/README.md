@@ -51,7 +51,7 @@ The label comes from the folder name: `<service>_<fault>`, for example `cartserv
 Known quirks are handled in `src/faulttrack/data.py` (see spec Section 3.3):
 
 - **An extra RE2-OB folder.** `checkoutservice_cpu/` has a fourth folder, `multi-source-data/`, with only `metrics.csv` and `inject_time.txt`. Its name isn't a repetition number, so it isn't a case and is ignored. RE2-OB has 90 numbered cases, all with `simple_metrics.csv`.
-- **Rows with an empty `time`.** `checkoutservice_cpu/2` and `checkoutservice_mem/2` in RE2-OB end with 256 and 258 rows that have values but no `time`. Those rows are dropped (they can't be placed in time); the timed rows still cover every detection window. A `time` cell holding text that isn't a number is still an error. See `docs/decisions.md`.
+- **Rows with an empty `time`.** `checkoutservice_cpu/2` and `checkoutservice_mem/2` in RE2-OB end with 256 and 258 rows that have values but no `time`. Those rows are dropped (they can't be placed in time). Every detection window still has enough rows; only the delay-120 post window of `checkoutservice_cpu/2` is short (90 s of data instead of 120 s). A `time` cell holding text that isn't a number is still an error. See `docs/decisions.md`.
 - `ts-` and `front-end` service names, `inf` values, and a duplicated `time.1` column.
 
 ## Rebuild the feature table
@@ -62,7 +62,7 @@ make data && make features
 
 `make features` (`uv run python -m faulttrack.build`) takes about 15 s and writes two files to `data/features/`:
 
-- **`re2_features.parquet`:** 1,350 rows (270 cases × 5 detection delays), sorted by `case_id` and `delay_s`. Identity columns `case_id`, `system`, `service`, `fault`, `delay_s` and `suspect_service` (the root-cause rule's pick, never a model input), then the features in `FEATURE_NAMES` order.
+- **`re2_features.parquet`:** 1,350 rows (270 cases × 5 detection delays), sorted by `case_id` and `delay_s`. Identity columns `case_id`, `system`, `service`, `fault`, `delay_s` and `suspect_service` (the root-cause rule's pick), then seven `n_services_<kind>` counts (services with a column of that kind after the `-db` merge, for the `--norm-counts` experiment), then the features in `FEATURE_NAMES` order. Only `FEATURE_NAMES` are model inputs.
 - **`re2_inventory.parquet`:** one row per case (270), with `status` (`ok` or the skip reason), row counts (`n_rows`, `n_untimed_rows`), metric columns in total and per kind, `nan_pct`, `inf_count`, `inject_pos` (where the injection falls in the file, 0 to 1) and `n_feature_rows`. The notebook uses it to show raw-data ranges and missing values without the raw download.
 
 The build is deterministic. To check that a rebuild matches the committed files without overwriting them, run `uv run python -m faulttrack.build --check`. It compares the data with `pandas.testing.assert_frame_equal`, not the bytes, because parquet bytes can differ across pyarrow versions.

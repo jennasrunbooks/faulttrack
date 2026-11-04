@@ -102,7 +102,7 @@ def find_cases(
 
     A case folder is ``<service>_<fault>/<n>/`` holding any of the RCAEval
     metrics or inject-time files. Folders without ``simple_metrics.csv``
-    (raw-only cases, such as RE2-OB ``checkoutservice_cpu/4``) are skipped with
+    (raw-only cases; RE2 has none) are skipped with
     a message on stderr, unless ``include_unusable`` is set: then they are
     yielded too (silently), so an inventory can list them with a skip reason.
     The system name comes from the folder above the label folder

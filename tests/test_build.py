@@ -9,8 +9,9 @@ import numpy as np
 import pandas as pd
 
 from faulttrack.build import (
-    ID_COLUMNS,
     INVENTORY_COLUMNS,
+    META_COLUMNS,
+    SERVICE_COUNT_COLUMNS,
     STATUS_OK,
     build_tables,
     main,
@@ -53,7 +54,11 @@ def _raw_root(tmp_path: Path) -> Path:
 
 def test_feature_table_has_id_columns_then_features_sorted(tmp_path: Path) -> None:
     features, _ = build_tables(_raw_root(tmp_path))
-    assert list(features.columns) == ID_COLUMNS + FEATURE_NAMES
+    assert list(features.columns) == META_COLUMNS + FEATURE_NAMES
+    assert set(SERVICE_COUNT_COLUMNS).isdisjoint(FEATURE_NAMES)
+    # 2 services ("<injected>", "other") with cpu/mem/socket; none with diskio
+    row = features.iloc[0]
+    assert row["n_services_cpu"] == 2 and row["n_services_diskio"] == 0
     assert len(features) == 2 * len(DELAYS_S)
     assert list(features["case_id"].unique()) == [
         "re2ob/cartservice_cpu/1",

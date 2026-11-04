@@ -101,7 +101,7 @@ class CVResult:
                 self.y_pred,
                 labels=list(self.labels),
                 average="macro",
-                zero_division=0,  # pyright: ignore[reportArgumentType]
+                zero_division=0,  # pyright: ignore[reportArgumentType]  # stubs list str only
             )
         )
 
@@ -112,7 +112,7 @@ class CVResult:
             self.y_true,
             self.y_pred,
             labels=list(self.labels),
-            zero_division=0,  # pyright: ignore[reportArgumentType]
+            zero_division=0,  # pyright: ignore[reportArgumentType]  # stubs list str only
         )
         return {
             label: {
@@ -321,7 +321,7 @@ def _macro_f1(y_true: np.ndarray, y_pred: np.ndarray) -> float:
             y_true,
             y_pred,
             average="macro",
-            zero_division=0,  # pyright: ignore[reportArgumentType]
+            zero_division=0,  # pyright: ignore[reportArgumentType]  # stubs list str only
         )
     )
 

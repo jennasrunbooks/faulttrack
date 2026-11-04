@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from faulttrack.build import FEATURES_FILE, ID_COLUMNS
+from faulttrack.build import FEATURES_FILE, META_COLUMNS
 from faulttrack.data import clean_metrics, read_metrics
 from faulttrack.features import DELAYS_S, FEATURE_NAMES, featurize
 
@@ -22,7 +22,7 @@ CASE_ID = "re2ob/productcatalogservice_cpu/1"
 @pytest.fixture(scope="module")
 def table_rows() -> pd.DataFrame:
     table = pd.read_parquet(TABLE)
-    assert list(table.columns) == ID_COLUMNS + FEATURE_NAMES
+    assert list(table.columns) == META_COLUMNS + FEATURE_NAMES
     rows = table[table["case_id"] == CASE_ID].set_index("delay_s")
     assert sorted(rows.index) == list(DELAYS_S)
     return rows

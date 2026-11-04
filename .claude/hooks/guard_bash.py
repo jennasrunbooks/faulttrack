@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""PreToolUse guard for Bash: block commands AGENTS.md forbids (exit 2 = block)."""
+"""PreToolUse guard for Bash: block commands AGENTS.md forbids (exit 2 = block).
+
+Rules match the command itself, not text it carries: heredoc bodies and quoted
+strings (commit messages, PR bodies, echo text) are removed before matching, so
+"no pip" in a PR description doesn't trigger the pip rule.
+"""
 
 import json
 import re
@@ -43,9 +48,31 @@ RULES = [
 ]
 
 
+_HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+
+
+def strip_text(command: str) -> str:
+    """Return the command with heredoc bodies and quoted strings blanked out."""
+    lines = command.split("\n")
+    out: list[str] = []
+    end_marker: str | None = None
+    for line in lines:
+        if end_marker is not None:
+            if line.strip() == end_marker:
+                end_marker = None
+            continue
+        out.append(line)
+        start = _HEREDOC_START.search(line)
+        if start:
+            end_marker = start.group(2)
+    text = "\n".join(out)
+    text = re.sub(r"'[^']*'", "''", text)
+    return re.sub(r'"(?:\\.|[^"\\])*"', '""', text)
+
+
 def main() -> int:
     event = json.load(sys.stdin)
-    command = event.get("tool_input", {}).get("command", "")
+    command = strip_text(event.get("tool_input", {}).get("command", ""))
     for pattern, message in RULES:
         if re.search(pattern, command):
             print(f"Blocked by .claude/hooks/guard_bash.py: {message}", file=sys.stderr)

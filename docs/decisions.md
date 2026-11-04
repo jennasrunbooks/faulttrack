@@ -46,4 +46,4 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 
 **Why:** the spike mapped both columns to the same `(service, kind)` key and assigned into a dict, so whichever column came later overwrote the other. That is a bug, not a modeling choice. A +8 step on `carts_cpu` with a flat `carts-db_cpu` after it gave `cpu_max` −0.14 instead of about 2.1, so the injected shift vanished from the features. The result also depended on column order.
 
-**What it changes:** only cases from systems with `-db` services sharing a kind with their service, which in RE2 means Sock Shop (`re2ss`). For `re2ob` and `re2tt`, delay-0 rows stay identical to the spike. The effect on the headline and on the root-cause hit rate is reported in #7, when the feature table is rebuilt.
+**What it changes:** only cases with a `-db` service that shares a kind with its service. In RE2 that is expected to be Sock Shop (`re2ss`) only, so delay-0 rows for `re2ob` and `re2tt` should stay identical to the spike; #7 checks this on the real data. The effect on the headline and on the root-cause hit rate is reported in #7, when the feature table is rebuilt.

@@ -26,6 +26,8 @@ updates:
     labels: [dependencies, ci]
 
   # "/" has no Dockerfile until plan line 10; Dependabot reports nothing to update there until then.
+  # Decline any bump that moves a Python base image off 3.12 (e.g. python:1-3.12-bookworm ->
+  # 1-3.13-bookworm): the project requires >=3.12,<3.13 and .python-version pins 3.12.
   - package-ecosystem: docker
     directories: [/, /.devcontainer]
     schedule:

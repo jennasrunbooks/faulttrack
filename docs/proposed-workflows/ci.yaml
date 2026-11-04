@@ -67,7 +67,15 @@ jobs:
           fi
 
           echo "Changed files:"
-          echo "$changed" | sed 's/^/  /'
+          sed 's/^/  /' <<< "$changed"
+
+          # CI itself and the build entry points affect every job: a workflow change
+          # must test itself, the Makefile defines lint/typecheck/test, and the
+          # Python version affects everything.
+          all_re='^\.github/|^docs/proposed-workflows/.*\.yaml$|^Makefile$|^\.python-version$'
+          if grep -qE "$all_re" <<< "$changed"; then
+            run_all "PR touches CI or a build entry point"
+          fi
 
           # Path rules from product-spec.md section 10 (PR CI design).
           # lint also covers uv.lock: a dependency bump can change type-check results.
@@ -77,7 +85,7 @@ jobs:
 
           for job in lint test docker; do
             re_var="${job}_re"
-            if echo "$changed" | grep -qE "${!re_var}"; then
+            if grep -qE "${!re_var}" <<< "$changed"; then
               result=true
             else
               result=false

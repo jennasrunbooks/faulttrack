@@ -2,7 +2,7 @@
 # Python targets run inside the devcontainer; docker-* and deploy run on the host only.
 
 .DEFAULT_GOAL := help
-.PHONY: help lint test data features train serve docker-build docker-run deploy
+.PHONY: help lint typecheck test data features train serve docker-build docker-run deploy
 
 # Each target's "## text" comment is what `make help` prints.
 
@@ -13,6 +13,9 @@ help: ## List the available targets
 lint: ## Ruff lint and format check
 	uv run ruff check .
 	uv run ruff format --check .
+
+typecheck: ## Type check with basedpyright (settings in [tool.pyright])
+	uv run basedpyright
 
 test: ## Run the test suite (pytest)
 	uv run pytest

@@ -26,6 +26,7 @@ path = "src/faulttrack/__init__.py"
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.40.2",
     "httpx>=0.28.1",
     "ipykernel>=7.4.0",
     "jupyter>=1.1.1",
@@ -47,6 +48,10 @@ select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
+typeCheckingMode = "standard"
+# spike/ is left as it was run (see [tool.ruff]); the rest are pyright's defaults,
+# which setting exclude replaces.
+exclude = ["spike", "**/__pycache__", "**/.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

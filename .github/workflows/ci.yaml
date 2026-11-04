@@ -1,4 +1,3 @@
-# PROPOSED: move to .github/workflows/ci.yaml
 # Issue: #4   Plan line: 3
 # Why: path-aware PR CI (lint + typecheck, tests, image build) behind one required check, ci-ok
 # Secrets/permissions needed: none (contents: read only; no secrets)

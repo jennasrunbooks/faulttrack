@@ -77,11 +77,11 @@ src/faulttrack/
   data.py                  # case discovery, loading, dataset quirks (spec 3.3)
   features.py              # shared feature code: the ONLY place features are computed
 data/raw/                  # gitignored; filled by `make data`
-data/features/             # re2_features.csv (committed) + ATTRIBUTION.md
+data/features/             # re2_features.parquet (committed) + ATTRIBUTION.md
 models/                    # model.bin + feature_spec.json (committed, small)
 web/                       # static results page served at /
 tests/                     # parity, API smoke, unit; tests/fixtures/ holds one small real case
-spike/                     # go/no-go scripts; exploratory, not graded; don't import from here
+spike/                     # go/no-go scripts; exploratory, not graded; excluded from ruff + typecheck; don't import from here
 scripts/gh/                # maintainer-run gh scripts (labels, milestone, issues); agents don't run them
 docs/                      # architecture.md, permissions.md, agent-team.md, decisions.md, images/, proposed-workflows/
 .devcontainer/  Dockerfile  fly.toml  .github/
@@ -122,7 +122,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
 2. **Never commit secrets or large or raw data.**
    - Don't read or print `.env` or `.env.*` (`.env.example` is fine).
    - Never commit `data/raw/`, zips, `.venv*`, `.vscode/`, or credentials or tokens of any kind.
-   - The only committed data is `data/features/re2_features.csv` (with `ATTRIBUTION.md`) and the small fixture under `tests/fixtures/`.
+   - The only committed data is `data/features/re2_features.parquet` (with `ATTRIBUTION.md`) and the small fixture under `tests/fixtures/`.
 3. **Don't edit `.github/`** (workflows or `dependabot.yaml`).
    - The agent token has no Workflows permission, so pushes that touch `.github/workflows/` are rejected.
    - Instead, put the proposed file in `docs/proposed-workflows/<name>.yaml`, and say in the PR that a human needs to move it.
@@ -167,16 +167,17 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
 **Data and features**
 - Labels come from the case folder name (`<service>_<fault>`). Build features from `simple_metrics.csv` only. Raw `metrics.csv` is stretch work.
 - Handle the known quirks in `data.py` (spec 3.3), not in callers: `ts-` and `front-end` naming, the `inf` then forward-fill then 0 sequence, the `time.1` column, and the missing `simple_metrics.csv` in `checkoutservice_cpu/4`.
-- Feature names are stable. If you rename or add one, regenerate `re2_features.csv` and `models/feature_spec.json` in the same PR, and say so in the PR.
+- Feature names are stable. If you rename or add one, regenerate `re2_features.parquet` and `models/feature_spec.json` in the same PR, and say so in the PR.
 
 **Notebook**
 - `notebook.ipynb` is graded. Commit it **with outputs**, after a clean top-to-bottom run (the `nbconvert --execute` command above).
 - Sections follow spec Section 9: data prep, EDA, feature importance, model selection and tuning, then the final model.
 - Every plot has a title and axis labels. Every result cell has a short markdown sentence saying what it shows.
-- Read the committed `data/features/re2_features.csv`, so reviewers don't need the raw data.
+- Read the committed `data/features/re2_features.parquet`, so reviewers don't need the raw data.
 
 **API**
 - Pydantic models validate every request body. Responses match the example in spec Section 6.
+- Keep the two answers separate and labeled. `fault` comes from the model (`"source": "model"`, with `cv_macro_f1`). `suspect_service` comes from the most-anomalous-service rule (`"source": "rule"`, with `hit_rate`). Read both metrics from `web/results.json`, never hardcode them. Never describe the suspect service as a model prediction in field descriptions, `/docs`, the README or the results page.
 - `predict.py` loads the model once at startup and listens on `$PORT` (default 8080).
 - Keep `/docs` (Swagger UI) working; reviewers use it.
 

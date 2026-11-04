@@ -114,7 +114,7 @@ Points are the rubric maximums.
 
 - **Asks:** the notebook and the training script can be re-executed without errors, and the data is accessible.
 - **Evidence:**
-  - [data/features/re2_features.csv](data/features/) is committed, with [ATTRIBUTION.md](data/features/ATTRIBUTION.md).
+  - [data/features/re2_features.parquet](data/features/) is committed, with [ATTRIBUTION.md](data/features/ATTRIBUTION.md).
   - Raw-data instructions are in [data/README.md](data/README.md) (Zenodo link, md5 checksums, `make data`).
   - Random seeds are fixed.
 - **Verify:** run the local path. The macro F1 that `train.py` prints should match the README's "Results" table.
@@ -158,7 +158,7 @@ These are filled in from a fresh-clone run on Nov 15 (plan line 13) and match `w
 | Grouped 5-fold CV, final model, 3 systems (macro F1) | `uv run python train.py` | _mean ± std (min/max)_ |
 | Dummy baseline (macro F1) | notebook §4 | _value_ |
 | Leave-one-system-out (macro F1, mean over held-out systems) | notebook §6 | _value_ |
-| Root-cause rule hit rate | notebook §6 | _value_ |
+| Suspect-service rule hit rate (a rule, not the model) | notebook §6 | _value_ |
 | Tests | `uv run pytest` | _N passed_ |
 | Fresh clone to running API | local path above | _minutes_ |
 
@@ -166,7 +166,7 @@ These are filled in from a fresh-clone run on Nov 15 (plan line 13) and match `w
 
 - **Unseen systems.** Accuracy on a system the model wasn't trained on is much lower than the headline. The README's "Generalizing to an unseen system" section shows this, with the analysis behind it. It's a real finding about domain shift, not a hidden flaw.
 - **Disk faults** sometimes have no direct disk telemetry in the data, so they're detected through memory and CPU side effects.
-- **The root-cause service** comes from a simple most-anomalous-service rule, not a trained model.
+- **The suspect service** comes from a simple rule (the most anomalous service), not the trained model. The API response labels it `"source": "rule"` and reports its own hit rate next to the classifier's macro F1.
 
 ## How this was built
 

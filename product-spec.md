@@ -24,7 +24,7 @@
 
 - **Fault-type classifier:** 6 classes (`cpu`, `mem`, `disk`, `socket`, `delay`, `loss`), trained on RCAEval RE2 metrics.
 - **Honest evaluation:** CV grouped by case, with the spread across folds reported. Generalization to an unseen system is analyzed separately.
-- **A suspected root-cause service** reported with every prediction (most-anomalous-service rule).
+- **A suspected root-cause service** reported with every case prediction. It comes from a rule (the most anomalous service), not the model, and is labeled that way in the API response, with its own hit rate.
 - **Every deliverable and rubric criterion met for 16/16** (Section 9).
 
 ### Non-goals (for the graded version)
@@ -94,7 +94,7 @@
 ### 3.5 Data handling in the repo
 
 - **Raw data:** `data/raw/` is **gitignored**. `make data` downloads it from Zenodo and extracts metrics only.
-- **Derived feature table:** `data/features/re2_features.csv` (about 1,350 rows) is **committed**, with `ATTRIBUTION.md`, so reviewers can run the notebook and `train.py` without the 4 GB download. `make features` regenerates it.
+- **Derived feature table:** `data/features/re2_features.parquet` (about 1,350 rows) is **committed**, with `ATTRIBUTION.md`, so reviewers can run the notebook and `train.py` without the 4 GB download. `make features` regenerates it.
 
 ---
 
@@ -172,21 +172,40 @@ These numbers come from the spike scripts (`spike/`), not from tuned final model
 **`predict.py`**, a FastAPI app with Pydantic validation, serves:
 
 - **`GET /`:** a static results page from `web/` (`index.html` + `results.json` written by `train.py`): headline results, the confusion matrix, sample held-out cases, and the runbook tree.
-- **`POST /predict`:** takes a feature vector and returns fault probabilities plus the top contributing features.
-- **`POST /predict/case`:** takes a raw case (a `simple_metrics.csv` upload plus the detection time) and builds the features with the shared code. It returns the prediction and the suspected service.
+- **`POST /predict`:** takes a feature vector and returns the `fault` block only (probabilities and top contributing features). A feature vector has no per-service detail, so there's no suspect service.
+- **`POST /predict/case`:** takes a raw case (a `simple_metrics.csv` upload plus the detection time) and builds the features with the shared code. It returns the `fault` block from the model and the `suspect_service` block from the rule.
 - **`GET /healthz`** and **`GET /docs`** (Swagger UI, for reviewers).
 
 Example response:
 
 ```json
 {
-  "fault": "loss",
-  "probabilities": {"loss": 0.62, "delay": 0.27, "cpu": 0.04, "mem": 0.03, "disk": 0.02, "socket": 0.02},
-  "suspect_service": "cartservice",
-  "top_signals": ["latency_max", "top_latency_share", "workload_max"],
-  "model_version": "2026.11.10-rf"
+  "fault": {
+    "label": "loss",
+    "probabilities": {"loss": 0.62, "delay": 0.27, "cpu": 0.04, "mem": 0.03, "disk": 0.02, "socket": 0.02},
+    "top_signals": ["latency_max", "top_latency_share", "workload_max"],
+    "source": "model",
+    "model_version": "2026.11.10-rf",
+    "cv_macro_f1": 0.83
+  },
+  "suspect_service": {
+    "name": "cartservice",
+    "source": "rule",
+    "rule": "most anomalous service: the largest total shift across metric kinds in the detection window",
+    "hit_rate": 0.85
+  }
 }
 ```
+
+**The two answers come from different places, and the response says so:**
+
+| Field | Comes from | Accuracy reported with it |
+|---|---|---|
+| `fault` | **The trained classifier** (`model.bin`) | `cv_macro_f1`: grouped 5-fold CV macro F1 across the 3 systems (go/no-go spike: 0.83) |
+| `suspect_service` | **A rule, not the model:** the most anomalous service. No ML is involved | `hit_rate`: share of RE2 cases where the rule names the injected service (go/no-go spike: 0.853) |
+
+- **Where the numbers come from:** `train.py` writes both to `web/results.json`, and `predict.py` reads them at startup. They're never hardcoded.
+- **Where it's documented:** the OpenAPI descriptions for these fields (shown at `/docs`) and the README state the same thing, so nobody reads `suspect_service` as an ML prediction.
 
 **Deployment:**
 - **Host:** Fly.io, at `https://faulttrack.jennasrunbooks.com`.
@@ -204,7 +223,7 @@ Example response:
 ```mermaid
 flowchart LR
     Z[("Zenodo<br/>RE2 zips<br/>CC BY 4.0")] -.->|make data| R["data/raw/<br/>metrics + inject_time<br/>(gitignored)"]
-    R -.->|make features| F["data/features/<br/>re2_features.csv<br/>(committed)"]
+    R -.->|make features| F["data/features/<br/>re2_features.parquet<br/>(committed)"]
     F --> N["notebook.ipynb<br/>EDA, model selection, tuning"]
     F --> T["train.py"]
     T --> M["models/model.bin<br/>feature_spec.json<br/>web/results.json"]
@@ -220,7 +239,7 @@ flowchart LR
     U["Client<br/>(reviewer, curl, /docs)"] -->|"POST /predict/case<br/>simple_metrics.csv + detection time"| A["predict.py"]
     A --> FE["src/faulttrack/features.py"]
     FE --> MOD["model.bin"]
-    MOD -->|"fault + probabilities<br/>+ suspect service"| U
+    MOD -->|"fault (model) + probabilities<br/>+ suspect service (rule)"| U
 ```
 
 ```
@@ -239,7 +258,7 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 │   ├── README.md           # download + checksums + extraction
 │   ├── raw/                # gitignored
 │   └── features/
-│       ├── re2_features.csv
+│       ├── re2_features.parquet
 │       └── ATTRIBUTION.md
 ├── src/
 │   └── faulttrack/         # Python package (src layout), installed into the venv by uv sync
@@ -301,7 +320,7 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 | EDA | 2 | Ranges, missing values, target analysis, feature importance | `notebook.ipynb` §2–3: per-fault signatures, disk telemetry gap, system-size table, mutual information, correlation | ☐ |
 | Model training | 3 | Multiple models (linear **and** tree-based) **and** tuned | `notebook.ipynb` §4–5: LR, DT, RF, XGBoost, tuned with grouped CV | ☐ |
 | Exporting notebook to script | 1 | Training logic in a script | `train.py` | ☐ |
-| Reproducibility | 1 | Notebook and script re-run; data accessible | committed `data/features/re2_features.csv` + `make data`; fresh-clone check | ☐ |
+| Reproducibility | 1 | Notebook and script re-run; data accessible | committed `data/features/re2_features.parquet` + `make data`; fresh-clone check | ☐ |
 | Model deployment | 1 | Served with Flask, FastAPI or similar | `predict.py` (FastAPI) | ☐ |
 | Dependency and environment management | 2 | Dependency file **and** venv, plus README on install and activation | `pyproject.toml` + `uv.lock`; README "Setup" | ☐ |
 | Containerization | 2 | Dockerfile **and** README on build and run | `Dockerfile`; README "Docker" | ☐ |
@@ -320,7 +339,7 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 | 1 | Go/no-go | Data downloaded and verified (md5); EDA; spike on all 3 systems; decision logged | Tue Nov 3 | Done (Nov 3) |
 | 2 | Repo access | `jksprattler-agent` fine-grained PAT scoped to `jennasrunbooks/faulttrack`; `dev-agent` env updated | Tue Nov 3 | ☐ |
 | 3 | Repo scaffold | `product-spec.md`, `AGENTS.md`, `LICENSE`, `.gitignore`, `.devcontainer/`, `pyproject.toml` (deps + `[build-system]` + ruff + pyright), `src/faulttrack/__init__.py`, `uv.lock`, `Makefile` skeleton, `data/README.md`, `data/features/ATTRIBUTION.md`; **PR CI** `.github/workflows/ci.yaml`, path-aware (see below); branch protection on `main` requiring the single `ci-ok` check; `.github/dependabot.yaml` + Dependabot security alerts on (see below) | Wed Nov 4 | ☐ |
-| 4 | Shared library | `src/faulttrack/data.py` + `features.py` ported from `spike/`; parity test fixture; `make data`, `make features`; committed `re2_features.csv` | Thu Nov 5 | ☐ |
+| 4 | Shared library | `src/faulttrack/data.py` + `features.py` ported from `spike/`; parity test fixture; `make data`, `make features`; committed `re2_features.parquet` | Thu Nov 5 | ☐ |
 | 5 | Notebook: prep + EDA | Data prep, quirks, class balance, per-fault signature plots, disk telemetry gap, scaling before/after, system-size table, mutual information + correlation | Sat Nov 7 | ☐ |
 | 6 | Notebook: models | Dummy, rule baseline, LR, DT (runbook), RF, XGBoost; grouped CV with tuning; per-class metrics; confusion matrix; ROC AUC; detection-delay curve; final model choice | Mon Nov 9 | ☐ |
 | 7 | Generalization analysis | Leave-one-system-out; `--norm-counts`; relative-features experiment (time-boxed to half a day); write-up | Tue Nov 10 | ☐ |
@@ -412,7 +431,7 @@ These also go into `AGENTS.md`.
   - `features.py` is shared by training and serving. **Any change to it must keep the parity test green.**
 - **Data rules:**
   - Never commit `data/raw/`, zips, `.venv*`, `.vscode/` or credentials.
-  - Only `data/features/re2_features.csv` (with `ATTRIBUTION.md`) is committed data.
+  - Only `data/features/re2_features.parquet` (with `ATTRIBUTION.md`) is committed data.
 - **Environment:**
   - Run Python only via `uv run …` in the devcontainer.
   - Change dependencies only with `uv add` / `uv remove`, and commit `pyproject.toml` + `uv.lock` together.

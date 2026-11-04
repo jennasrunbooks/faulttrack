@@ -24,7 +24,7 @@ The plan lines in spec Section 10 group into four workstreams. The *Owner* colum
 | Workstream | Plan lines | Owner | Main files |
 |---|---|---|---|
 | **Data and features** | 3 (scaffold), 4 (shared library) | Implementer. Jenna does the `.github/` and branch-protection parts of line 3 | `pyproject.toml`, `Makefile`, `src/faulttrack/`, `data/`, `tests/` |
-| **Modelling** | 5, 6 (notebook), 7 (generalisation), 8 (`train.py`) | Implementer drafts; Jenna reviews every result | `notebook.ipynb`, `train.py`, `models/`, `web/results.json`, `docs/decisions.md` |
+| **Modelling** | 5, 6 (notebook), 7 (generalization), 8 (`train.py`) | Implementer drafts; Jenna reviews every result | `notebook.ipynb`, `train.py`, `models/`, `web/results.json`, `docs/decisions.md` |
 | **Serving** | 9 (`predict.py` + tests), 10 (containerization) | Implementer writes the code; Jenna builds and runs the image on the Mac | `predict.py`, `web/`, `tests/`, `Dockerfile` |
 | **Delivery** | 11 (deploy), 12 (README), 13 (reproducibility check), 14 (submit) | Jenna, with an implementer drafting the README and `fly.toml` | `README.md`, `fly.toml`, `docs/images/` |
 
@@ -35,7 +35,7 @@ Most of the plan is a chain: the features feed the notebook, the notebook picks 
 | When | Parallel tracks | Why it's safe |
 |---|---|---|
 | After line 4 merges (Nov 5) | **A:** notebook EDA (line 5) · **B:** `predict.py` skeleton with Pydantic models, `/healthz` and a stub model, plus API tests (start of line 9) | A only touches `notebook.ipynb`; B only touches `predict.py` and `tests/test_api.py`. Both read the merged `features.py` and don't change it |
-| After line 6 picks the model (Nov 9) | **A:** generalisation analysis (line 7) · **B:** `train.py` (line 8) | A adds notebook sections; B writes `train.py` and `models/`. Only B regenerates `models/` |
+| After line 6 picks the model (Nov 9) | **A:** generalization analysis (line 7) · **B:** `train.py` (line 8) | A adds notebook sections; B writes `train.py` and `models/`. Only B regenerates `models/` |
 | After line 8 (Nov 10) | **A:** finish `predict.py` with the real model (line 9) · **B:** README draft (line 12) | Different files; the README draft links to results that already exist |
 
 ## How a plan line becomes a merged PR
@@ -45,7 +45,7 @@ Most of the plan is a chain: the features feed the notebook, the notebook picks 
    - **one area:** `data`, `features`, `notebook`, `train`, `api`, `docker`, `deploy` or `ci` (`documentation` covers docs work)
    - **ML labels where they apply:** `evaluation`, `experiment`, `metrics-change`
    - **routing:** `needs-human`, `needs-decision`, `blocked`, `do-not-merge` (makes `ci-ok` fail, which blocks the merge), `stretch`, `full-ci`
-   - **colours:** areas are pastel, ML labels mid-tone, routing labels bright, so the labels that need action stand out
+   - **colors:** areas are pastel, ML labels mid-tone, routing labels bright, so the labels that need action stand out
    - **Dependabot:** `dependencies`, `security`
 3. **Assignment.** Jenna assigns the issue and starts an implementer in a fresh clone, on the branch `ws-<n>-<short-desc>`.
 4. **Implementation.** The implementer reads `AGENTS.md`, the issue and the spec sections it names. It implements, then runs `make lint` and `make test`, plus the notebook run if the notebook changed. It stops and asks whenever a decision belongs to Jenna (the list is in `AGENTS.md` under "When to stop and ask").
@@ -98,7 +98,7 @@ Most of the plan is a chain: the features feed the notebook, the notebook picks 
     The parallel windows above map onto these clones. On Nov 5, `-nb` and `-api` run together. On Nov 9, `-nb` (line 7) and `-pipeline` (line 8) run together. On Nov 10, `-api` and `-docs` run together. Each clone is created once with `git clone … ~/src/faulttrack-<track>`, and each issue is a new `git switch -c ws-<n>-<desc>` from an up-to-date `main`.
 - **One issue per branch,** one branch per agent. Keep branches current by merging `origin/main`, never by rebasing (see `AGENTS.md`).
 - **One agent at a time on `notebook.ipynb`.** Notebook merge conflicts are painful to resolve by hand. If two tracks need the notebook, they take turns.
-- **Generated files have one owner per change.** Only the PR that changes `features.py` regenerates `data/features/re2_features.csv`. Only the PR that changes training regenerates `models/` and `web/results.json`. Other PRs never commit changes to these files.
+- **Generated files have one owner per change.** Only the PR that changes `features.py` regenerates `data/features/re2_features.parquet`. Only the PR that changes training regenerates `models/` and `web/results.json`. Other PRs never commit changes to these files.
 - **Human-only files stay with humans:**
   - `.github/`, `product-spec.md`, tags, and repo settings
   - Agents propose `.github/` changes in `docs/proposed-workflows/` and spec changes in the PR description.

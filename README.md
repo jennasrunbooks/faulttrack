@@ -1,4 +1,5 @@
 # FaultTrack
+
 [![CI](https://github.com/jennasrunbooks/faulttrack/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/jennasrunbooks/faulttrack/actions/workflows/ci.yaml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
@@ -24,19 +25,21 @@ The answers decide who gets paged and which runbook to open. Today an on-call en
 FaultTrack makes that first guess automatically. It takes the per-service metrics in a window around the alert, and returns:
 
 - **a fault type** with class probabilities
-- **the suspected root-cause service**
+- **the suspected root-cause service.** This comes from a simple rule (the most anomalous service), not from the model. It's labeled that way in every response, with its own hit rate.
 - **the signals that drove the prediction**
 
 ## How it's used
 
 1. **An alert fires.** Today that means a manual step: export the alert window's metrics as a CSV. A live Alertmanager webhook is planned stretch work.
 2. **The CSV goes to `POST /predict/case`** along with the detection time.
-3. **FaultTrack replies** with, for example, `"fault": "loss"`, `"suspect_service": "cartservice"`, the probabilities, and the top contributing signals.
+3. **FaultTrack replies** with two separately labeled answers:
+   - **From the classifier:** the fault type (for example `loss`), with probabilities, the top contributing signals and the model's cross-validated macro F1.
+   - **From a rule, not the model:** the suspect service (for example `cartservice`), with the rule's hit rate.
 4. **On-call opens the matching runbook.** In this example that's the packet-loss runbook, starting at `cartservice`. The depth-3 decision tree on the results page is a readable version of the same logic.
 
 **Who it's for:** on-call SREs and platform engineers triaging incidents in Kubernetes-style microservice systems.
 
-**What it doesn't claim:** reliable accuracy on a system it was never trained on. See [Generalising to an unseen system](#generalising-to-an-unseen-system).
+**What it doesn't claim:** reliable accuracy on a system it was never trained on. See [Generalizing to an unseen system](#generalizing-to-an-unseen-system).
 
 ## Data
 
@@ -48,7 +51,7 @@ FaultTrack makes that first guess automatically. It takes the per-service metric
 - **What's used:** each case has per-service metrics at 1-second resolution for 24 minutes, with the fault injected at the midpoint. FaultTrack uses the metrics only (CPU, memory, disk I/O, sockets, latency, errors, workload), not the logs or traces.
 
 **What's in this repo:**
-- **[`data/features/re2_features.csv`](data/features/):** the derived feature table, about 1,350 rows (5 detection delays per case). It's committed, so you can run the notebook and the training script without downloading anything. Credit and the changes made are in [`ATTRIBUTION.md`](data/features/ATTRIBUTION.md).
+- **[`data/features/re2_features.parquet`](data/features/):** the derived feature table (Parquet), about 1,350 rows (5 detection delays per case). It's committed, so you can run the notebook and the training script without downloading anything. Credit and the changes made are in [`ATTRIBUTION.md`](data/features/ATTRIBUTION.md).
 - **The raw data** (about 4 GB of zips) isn't committed. To rebuild the table from scratch, see [`data/README.md`](data/README.md): `make data && make features`.
 
 ## Approach
@@ -88,11 +91,18 @@ _TBD (plan lines 6 and 8)._ Headline: grouped 5-fold CV across all three systems
 **Also reported:**
 - the confusion matrix and per-class precision and recall
 - how F1 changes with detection delay
-- the root-cause rule's hit rate
+- the suspect-service rule's hit rate. This is reported separately because it's a rule, not the model (see below)
 
 _TBD._
 
-### Generalising to an unseen system
+**Fault type and suspect service are separate results.** The fault type comes from the trained classifier. The suspect service comes from a rule: the most anomalous service, with no ML involved.
+
+| Answer | Comes from | Metric | Value |
+|---|---|---|---|
+| Fault type | Trained classifier | Macro F1, grouped 5-fold CV across 3 systems | _TBD_ (go/no-go spike: 0.83) |
+| Suspect service | Rule: most anomalous service, not the model | Hit rate: share of cases where it names the injected service | _TBD_ (go/no-go spike: 0.85) |
+
+### Generalizing to an unseen system
 
 _TBD (plan line 7)._ This section trains on two systems and tests on the third, rotating through all three, and explains why that score is much lower than the headline. It's a domain-shift finding, reported here as a limitation rather than hidden.
 

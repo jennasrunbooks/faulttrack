@@ -18,7 +18,7 @@ What to build and why is in [`product-spec.md`](../product-spec.md), and working
 flowchart LR
     subgraph offline["Offline (devcontainer)"]
         Z[("Zenodo RE2 zips")] -.->|make data| RAW["data/raw/"]
-        RAW -.->|make features| FT["data/features/<br/>re2_features.csv"]
+        RAW -.->|make features| FT["data/features/<br/>re2_features.parquet"]
         FT --> NB["notebook.ipynb"]
         FT --> TR["train.py"]
         TR --> ART["models/model.bin<br/>models/feature_spec.json<br/>web/results.json"]
@@ -40,7 +40,7 @@ flowchart LR
     API --> WEB
 ```
 
-The dashed steps need the 4 GB raw download. Everything from `re2_features.csv` onward runs from committed files.
+The dashed steps need the 4 GB raw download. Everything from `re2_features.parquet` onward runs from committed files.
 
 ## Module boundaries
 
@@ -48,14 +48,14 @@ The dashed steps need the 4 GB raw download. Everything from `re2_features.csv` 
 |---|---|
 | `src/faulttrack/data.py` | The only code that knows the RCAEval folder layout and its quirks (spec 3.3). It returns a tidy metrics `DataFrame` (one `time` column + `<service>_<kind>` columns), the injection time, and the label. No feature logic |
 | `src/faulttrack/features.py` | The only code that computes features. It's a pure function of (metrics `DataFrame`, detection time, settings) and does no file I/O. It's used by `make features`, `train.py`, the notebook and `predict.py` |
-| `notebook.ipynb` | Reads `re2_features.csv`. It may plot raw cases for EDA through `data.py`, but never re-implements features |
-| `train.py` | Reads `re2_features.csv`, fits the final model with the settings chosen in the notebook, and writes the artifacts. It doesn't download anything |
+| `notebook.ipynb` | Reads `re2_features.parquet`. It may plot raw cases for EDA through `data.py`, but never re-implements features |
+| `train.py` | Reads `re2_features.parquet`, fits the final model with the settings chosen in the notebook, and writes the artifacts. It doesn't download anything |
 | `predict.py` | Loads the artifacts once at startup. It handles HTTP only and calls `features.py` for raw cases. It has no training code |
 | `spike/` | Go/no-go scripts. Graded code never imports from it |
 
 **Tests:**
 - **Unit tests** cover `data.py` quirks and `features.py` math against small synthetic frames.
-- **The parity test** runs one real fixture case (`tests/fixtures/`) through `features.py` the way `/predict/case` does, and asserts the result equals that case's row in `re2_features.csv`.
+- **The parity test** runs one real fixture case (`tests/fixtures/`) through `features.py` the way `/predict/case` does, and asserts the result equals that case's row in `re2_features.parquet`.
 - **API tests** use FastAPI's `TestClient`.
 - No test needs `data/raw/` or the network.
 
@@ -66,8 +66,8 @@ The dashed steps need the 4 GB raw download. Everything from `re2_features.csv` 
 | Download | `make data` → `spike/download_rcaeval.sh` | Zenodo record 14590730 | `data/raw/RE2-{OB,SS,TT}/…/<service>_<fault>/<n>/` with `simple_metrics.csv`, `inject_time.txt` (logs and traces aren't extracted) |
 | Discover cases | `data.find_cases()` | `data/raw/` | One entry per case: system, service, fault, repetition, path. Cases without `simple_metrics.csv` are skipped with a stderr message (RE2-OB has one: `checkoutservice_cpu/4`) |
 | Load | `data.load_case()` | One case folder | Metrics frame. `inf` becomes NaN, then forward-fill, then 0. The repeated `time.1` header column is dropped, and `latency-50` is ignored |
-| Featurise | `features.featurize()` | Metrics frame + detection time | One feature row |
-| Build table | `make features` | All cases × 5 detection delays | `data/features/re2_features.csv` (about 1,350 rows) |
+| Featurize | `features.featurize()` | Metrics frame + detection time | One feature row |
+| Build table | `make features` | All cases × 5 detection delays | `data/features/re2_features.parquet` (about 1,350 rows) |
 
 ## Feature computation
 
@@ -94,10 +94,10 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    CSV["re2_features.csv"] --> SPLIT["GroupKFold(5) by case_id"]
+    FTP["re2_features.parquet"] --> SPLIT["GroupKFold(5) by case_id"]
     SPLIT --> CV["Cross-validate the chosen model<br/>(settings from the notebook)"]
     CV --> RES["web/results.json<br/>macro F1 mean ± std, per-class metrics,<br/>confusion matrix, LOSO table"]
-    CSV --> FIT["Refit on all rows"]
+    FTP --> FIT["Refit on all rows"]
     FIT --> BIN["models/model.bin"]
     FIT --> SPEC["models/feature_spec.json<br/>feature order, classes, window settings,<br/>model_version"]
 ```
@@ -111,7 +111,7 @@ flowchart TD
 **Evaluation rules (spec Section 5):**
 - **Splits:** grouped CV by case only. Each case contributes 5 rows, so a row-level split would leak.
 - **Headline:** grouped 5-fold CV across all three systems, reported as mean ± std (min/max).
-- **Generalisation:** leave-one-system-out is a separate section.
+- **Generalization:** leave-one-system-out is a separate section.
 
 ## Serving
 
@@ -127,26 +127,37 @@ sequenceDiagram
     F-->>A: feature row
     A->>M: predict_proba(row in spec order)
     M-->>A: class probabilities
-    A->>A: suspect service = most-shifted service
-    A-->>C: fault, probabilities, suspect_service, top_signals, model_version
+    A->>A: suspect service = most anomalous service (rule, not the model)
+    A-->>C: fault {label, probabilities, top_signals, source: model, cv_macro_f1} + suspect_service {name, source: rule, hit_rate}
 ```
 
 | Endpoint | Input | Output | Errors |
 |---|---|---|---|
 | `GET /` | none | Static results page (`web/index.html` + `results.json`) | none |
-| `POST /predict` | JSON feature vector (names from `feature_spec.json`) | Prediction JSON (spec Section 6) | 422: missing or unknown features |
-| `POST /predict/case` | Multipart: `simple_metrics.csv` + `detection_time` (Unix seconds) | Prediction JSON with `suspect_service` | 413: file too large · 422: bad input, or the window falls outside the file · 400: no usable metric columns (for example a raw `metrics.csv`) |
+| `POST /predict` | JSON feature vector (names from `feature_spec.json`) | `fault` block only (spec Section 6) | 422: missing or unknown features |
+| `POST /predict/case` | Multipart: `simple_metrics.csv` + `detection_time` (Unix seconds) | `fault` block (model) + `suspect_service` block (rule), each with its source and its accuracy | 413: file too large · 422: bad input, or the window falls outside the file · 400: no usable metric columns (for example a raw `metrics.csv`) |
 | `GET /healthz` | none | `{"status": "ok", "model_version": …}` | none |
 | `GET /docs` | none | Swagger UI | none |
 
-**Runtime behaviour:**
+**Runtime behavior:**
 - **Startup:** the model and spec load once at startup. If either is missing, the app exits instead of serving errors.
 - **State:** the app holds no state and writes nothing to disk. Uploads are read in memory, subject to the size limit.
 - **Port:** the app listens on `$PORT` (default 8080).
 
 ## Root-cause rule
 
-`suspect_service` comes from a rule, not a model. It's the service with the largest total shift across kinds in the detection window. On the go/no-go spike it named the injected service in 85% of cases across the three systems. A trained ranking model is stretch work.
+`suspect_service` comes from a **rule, not the model**: it's the service with the largest total shift across metric kinds in the detection window. No ML is involved.
+
+**Its accuracy is reported separately from the classifier's:**
+- **Rule:** hit rate, the share of cases where the rule names the injected service. On the go/no-go spike it was 0.853 across the three systems.
+- **Classifier:** macro F1 for the fault type. On the spike it was 0.83 with grouped CV.
+
+**Where they appear:**
+- **Results files:** `train.py` computes both and writes them to `web/results.json`.
+- **API response:** each answer carries its own `source` (`"model"` or `"rule"`) and its own metric (`cv_macro_f1` or `hit_rate`).
+- **README Results table:** both appear side by side.
+
+A trained ranking model is stretch work.
 
 ## Deployment
 

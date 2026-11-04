@@ -88,5 +88,5 @@ These gaps are reviewed again after the Nov 16 deadline.
 
 ## Data and license obligations
 
-- **Licenses:** RCAEval is CC BY 4.0. The committed `re2_features.csv` is a derived work, and `data/features/ATTRIBUTION.md` credits the source and describes the changes. Code is Apache-2.0.
+- **Licenses:** RCAEval is CC BY 4.0. The committed `re2_features.parquet` is a derived work, and `data/features/ATTRIBUTION.md` credits the source and describes the changes. Code is Apache-2.0.
 - **What stays out of the repo:** raw data (`data/raw/`) and the zips are never committed. The data contains no personal information. It's synthetic microservice telemetry from fault-injection experiments.

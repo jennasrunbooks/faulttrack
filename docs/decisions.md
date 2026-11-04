@@ -28,3 +28,14 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 **Why:** LOSO came in at **0.364 ± 0.112**, below the 0.45 threshold set for using it as the headline. `--norm-counts` didn't close the gap (0.335 ± 0.118). System size explains only part of it. The rest is domain shift: the same fault has a different magnitude and spread in each system.
 
 **What it changes:** the README leads with the grouped-CV number and states the unseen-system gap next to it, rather than hiding it.
+
+## 2026-11-04: Feature windows are anchored at the detection time
+
+**Decision:** both feature windows are anchored at the detection time `t_det`: the baseline is `[t_det − 300 s, t_det)` and the post window is `[t_det, t_det + 120 s)`. `features.featurize()` takes only `t_det`. Training rows use `t_det` = injection time + a detection delay of 0, 30, 60, 90 or 120 s. Decided by Jenna on [issue #6](https://github.com/jennasrunbooks/faulttrack/issues/6#issuecomment-6639692891).
+
+**Why:** the go/no-go spike anchored the baseline at the *injection* time and moved only the post window by the delay. That needs the injection time, which the API and real alerts never have, so training rows would not match what serving computes (train/serve skew). Anchoring both windows at `t_det` is what the API can reproduce from `detection_time` alone.
+
+**What it changes:**
+- Rows with delay 0 are unchanged from the spike.
+- For delays of 30–120 s (1,080 of the 1,350 rows), the baseline now already includes some fault data, as it would for a real alert that fires late. The shifts get smaller as the delay grows.
+- The headline (spike: RF 0.828 ± 0.039) may move when the feature table is rebuilt in #7. That is expected and is reported there with before/after mean ± std.

@@ -65,7 +65,7 @@ The dashed steps need the 4 GB raw download. Everything from `re2_features.parqu
 |---|---|---|---|
 | Download | `make data` → `spike/download_rcaeval.sh` | Zenodo record 14590730 | `data/raw/RE2-{OB,SS,TT}/…/<service>_<fault>/<n>/` with `simple_metrics.csv`, `inject_time.txt` (logs and traces aren't extracted) |
 | Discover cases | `data.find_cases()` | `data/raw/` | One entry per case: system, service, fault, repetition, path. Cases without `simple_metrics.csv` are skipped with a stderr message (RE2-OB has one: `checkoutservice_cpu/4`) |
-| Load | `data.load_case()` | One case folder | Metrics frame. `inf` becomes NaN, then forward-fill, then 0. The repeated `time.1` header column is dropped, and `latency-50` is ignored |
+| Load | `data.load_case()` = `read_metrics()` + `clean_metrics()` + `inject_time.txt` + label | One case folder | Metrics frame. `inf` becomes NaN, then forward-fill, then 0. The repeated `time.1` header column is dropped, and `latency-50` is ignored. A raw Prometheus file (more than 20 `container-`/`istio-` columns) raises `ValueError`. `predict.py` cleans an uploaded CSV with the same `read_metrics()` + `clean_metrics()` |
 | Featurize | `features.featurize()` | Metrics frame + detection time | One feature row |
 | Build table | `make features` | All cases × 5 detection delays | `data/features/re2_features.parquet` (about 1,350 rows) |
 

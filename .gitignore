@@ -220,7 +220,11 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-#RCAEval
+# FaultTrack project rules (AGENTS.md "Hard rules" 2)
 data/raw/
 eda/
-.venv/
+.venv*/
+*.zip
+.env.*
+!.env.example
+.claude/settings.local.json

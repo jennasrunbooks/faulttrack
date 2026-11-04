@@ -157,6 +157,13 @@ def test_clean_metrics_requires_time_column() -> None:
         clean_metrics(pd.DataFrame({"cart_cpu": [1.0]}))
 
 
+@pytest.mark.parametrize("bad_time", ["2026-11-04T10:00:00", None, "inf"])
+def test_clean_metrics_rejects_bad_time_values(bad_time: str | None) -> None:
+    frame = pd.DataFrame({"time": [str(T0), bad_time], "cart_cpu": [1.0, 2.0]})
+    with pytest.raises(ValueError, match="time"):
+        clean_metrics(frame)
+
+
 def test_clean_metrics_does_not_modify_input() -> None:
     raw = read_metrics(io.StringIO(_messy_csv()))
     before = raw.copy()

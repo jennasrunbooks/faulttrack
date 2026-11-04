@@ -155,7 +155,8 @@ def clean_metrics(frame: pd.DataFrame) -> pd.DataFrame:
     - drops repeated-header columns (``time.1``, ``time.2``, ...)
     - drops ``latency-50`` columns (p90 latency only)
     - raises ``ValueError`` for a raw Prometheus export (more than 20
-      ``container-`` or ``istio-`` columns) or a missing ``time`` column
+      ``container-`` or ``istio-`` columns), a missing ``time`` column, or a
+      ``time`` value that is empty or not a number
     - converts metric values to numbers (unparseable cells become NaN), then
       ``inf`` -> NaN, sorts by ``time``, forward-fills, and fills what's left
       with 0
@@ -180,6 +181,8 @@ def clean_metrics(frame: pd.DataFrame) -> pd.DataFrame:
         index=named.index,
     )
     out = out.replace([np.inf, -np.inf], np.nan)
+    if bool(out["time"].isna().to_numpy().any()):
+        raise ValueError("'time' column has missing or non-numeric values")
     out = out.sort_values(by="time", kind="mergesort").ffill().fillna(0)
     return out.reset_index(drop=True)
 

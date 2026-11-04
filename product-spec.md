@@ -286,7 +286,7 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 **Rules:**
 - **Never run `uv` on the Mac against the repo's `.venv`.** It contains Linux binaries. Mac runs, if any, use `UV_PROJECT_ENVIRONMENT=.venv-mac` and `uv sync --frozen`.
 - **Package layout:** `src/faulttrack/`. `pyproject.toml` has a `[build-system]` (hatchling: `requires = ["hatchling"]`, `build-backend = "hatchling.build"`), so `uv sync` installs `faulttrack` into `.venv` as an editable package. Root scripts then `import faulttrack` with no `sys.path` tricks. Tests run against the installed package, which catches packaging mistakes early.
-- **Tool settings live in `pyproject.toml`:** `[tool.ruff]` (line length 88; rules E4, E7, E9, F, I, B, UP) and `[tool.pyright]` (`venvPath = "."`, `venv = ".venv"`, `typeCheckingMode = "standard"`). basedpyright reads `[tool.pyright]`, so don't also add a `[tool.basedpyright]` section (having both is an error).
+- **Tool settings live in `pyproject.toml`:** `[tool.ruff]` (line length 88; rules E4, E7, E9, F, I, B, UP) and `[tool.pyright]` (`venvPath = "."`, `venv = ".venv"`, `typeCheckingMode = "standard"`, `exclude = ["spike", "**/__pycache__", "**/.*"]`). `spike/` is excluded from Ruff and the type check because it's exploratory and not graded. Setting `exclude` replaces Pyright's defaults, so the default patterns are listed again. basedpyright reads `[tool.pyright]`, so don't also add a `[tool.basedpyright]` section (having both is an error).
 - **Runtime vs. dev dependencies:**
   - **runtime:** pandas, numpy, pyarrow, scikit-learn, xgboost, fastapi, uvicorn, python-multipart (file uploads for `/predict/case`)
   - **dev:** matplotlib, jupyter, ipykernel, ruff, basedpyright, pytest, httpx. basedpyright is a Pyright fork on PyPI that ships Node as a wheel (`nodejs-wheel-binaries`), so type checking never downloads anything at run time.
@@ -336,12 +336,13 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 | Job | Runs when the PR touches | Does |
 |---|---|---|
 | `changes` | always | A shell step: `git diff --name-only` against the PR base, matched with `grep -E` patterns, writes one `true`/`false` output per job to `$GITHUB_OUTPUT`. No third-party filter action |
-| `lint` | `**/*.py`, `*.ipynb`, `pyproject.toml` | `ruff check`, `ruff format --check` |
+| `lint` | `**/*.py`, `*.ipynb`, `pyproject.toml`, `uv.lock` (a dependency bump can change type-check results) | `make lint` (`ruff check`, `ruff format --check`) and `make typecheck` (basedpyright) |
 | `test` | `src/**`, `tests/**`, `train.py`, `predict.py`, `pyproject.toml`, `uv.lock`, `data/features/**`, `models/**` | `uv sync --frozen`, `pytest` |
 | `docker` | `Dockerfile`, `src/**`, `predict.py`, `pyproject.toml`, `uv.lock`, `models/**`, `web/**` | `docker build` (no push) |
 | `ci-ok` | always, after the others | passes if every job passed or was skipped; this is the **only required check** |
 
 - **Pushes to `main` run every job.** That catches anything a path filter missed.
+- **CI and build changes run every job.** A PR that touches `.github/`, a proposed workflow (`docs/proposed-workflows/*.yaml`), the `Makefile` or `.python-version` runs everything. A workflow change has to test itself, the `Makefile` defines the lint, type-check and test commands, and the Python version affects all of them.
 - **`full-ci` label:** adding it to a PR runs every job, whatever changed. The workflow triggers on `pull_request` types `opened`, `synchronize`, `reopened`, `labeled` and `unlabeled`. `workflow_dispatch` runs everything on demand.
 - **Other settings:** `concurrency` cancels superseded runs on the same PR, and `astral-sh/setup-uv` caches the uv download cache.
 - **Why job-level skips:** don't put a top-level `paths:` filter on the workflow. If the whole workflow is skipped, its required checks never report, and the PR can't merge. Instead the workflow always starts, and individual jobs are skipped with `if:`. GitHub counts a skipped job as passing for a required check. ConsoleTrack uses the same pattern.
@@ -358,7 +359,7 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 
 - **Schedule:** weekly. Minor and patch updates are **grouped** into one PR per ecosystem, so there's less noise. Major updates come as separate PRs.
 - **Security updates** (Settings → Advanced Security): on. They open PRs immediately for known CVEs, regardless of the schedule.
-- **CI:** Dependabot PRs go through the same path-aware CI. A `uv.lock` change triggers `test` and `docker`.
+- **CI:** Dependabot PRs go through the same path-aware CI. A `uv.lock` change triggers `lint` (including the type check), `test` and `docker`.
 
 **Buffer:** lines 7 and 12 are the flexible ones. If the schedule slips, cut the relative-features experiment (line 7) first, and never cut lines 5, 6, 12 or 13.
 

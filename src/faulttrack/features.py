@@ -20,7 +20,7 @@ fits systems of any size.
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -81,6 +81,10 @@ class Featurized:
 
     features: dict[str, float]
     suspect_service: str | None
+    service_counts: dict[str, int] = field(default_factory=dict)
+    """Per kind (``KINDS`` order), how many services have at least one column of
+    that kind after the ``-db`` merge: the count ``norm_counts`` divides by.
+    Metadata, never a model input."""
 
 
 def shift_scores(
@@ -194,7 +198,8 @@ def featurize(
         value = profile.get(kind, 0.0)
         features[f"top_{kind}"] = value
         features[f"top_{kind}_share"] = abs(value) / total
-    return Featurized(features=features, suspect_service=suspect)
+    counts = {kind: len(by_kind[kind]) for kind in KINDS}
+    return Featurized(features=features, suspect_service=suspect, service_counts=counts)
 
 
 def _stronger(new: float, current: float | None) -> float:

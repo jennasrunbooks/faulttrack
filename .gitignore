@@ -223,7 +223,6 @@ __marimo__/
 # FaultTrack project rules (AGENTS.md "Hard rules" 2)
 data/raw/
 eda/
-.venv/
 .venv*/
 *.zip
 .env.*

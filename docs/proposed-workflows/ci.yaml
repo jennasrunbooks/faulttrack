@@ -1,0 +1,178 @@
+# PROPOSED: move to .github/workflows/ci.yaml
+# Issue: #4   Plan line: 3
+# Why: path-aware PR CI (lint + typecheck, tests, image build) behind one required check, ci-ok
+# Secrets/permissions needed: none (contents: read only; no secrets)
+
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run per PR: a new push or label change cancels the older run.
+# Runs on main are never cancelled, so every merged commit is fully checked.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      lint: ${{ steps.filter.outputs.lint }}
+      test: ${{ steps.filter.outputs.test }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Decide which jobs run
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          FULL_CI: ${{ contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          run_all() {
+            echo "Running every job: $1"
+            for job in lint test docker; do
+              echo "$job=true" >> "$GITHUB_OUTPUT"
+            done
+            exit 0
+          }
+
+          if [ "$EVENT" != "pull_request" ]; then
+            run_all "event is $EVENT"
+          fi
+          if [ "$FULL_CI" = "true" ]; then
+            run_all "PR has the full-ci label"
+          fi
+
+          # Three-dot diff: only what the PR changed since it branched off the base.
+          if ! changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA"); then
+            run_all "could not diff $BASE_SHA...$HEAD_SHA"
+          fi
+
+          echo "Changed files:"
+          sed 's/^/  /' <<< "$changed"
+
+          # CI itself and the build entry points affect every job: a workflow change
+          # must test itself, the Makefile defines lint/typecheck/test, and the
+          # Python version affects everything.
+          all_re='^\.github/|^docs/proposed-workflows/.*\.yaml$|^Makefile$|^\.python-version$'
+          if grep -qE "$all_re" <<< "$changed"; then
+            run_all "PR touches CI or a build entry point"
+          fi
+
+          # Path rules from product-spec.md section 10 (PR CI design).
+          # lint also covers uv.lock: a dependency bump can change type-check results.
+          lint_re='\.py$|\.ipynb$|^pyproject\.toml$|^uv\.lock$'
+          test_re='^src/|^tests/|^train\.py$|^predict\.py$|^pyproject\.toml$|^uv\.lock$|^data/features/|^models/'
+          docker_re='^Dockerfile$|^src/|^predict\.py$|^pyproject\.toml$|^uv\.lock$|^models/|^web/'
+
+          for job in lint test docker; do
+            re_var="${job}_re"
+            if grep -qE "${!re_var}" <<< "$changed"; then
+              result=true
+            else
+              result=false
+            fi
+            echo "$job=$result"
+            echo "$job=$result" >> "$GITHUB_OUTPUT"
+          done
+
+  lint:
+    name: lint
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.lint != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      UV_FROZEN: "1" # keep the `uv run` calls inside make on the locked versions
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --frozen
+      - run: make lint
+      - run: make typecheck
+
+  test:
+    name: test
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.test != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      UV_FROZEN: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --frozen
+      - run: make test
+
+  docker:
+    name: docker
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docker != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the service image (no push)
+        run: |
+          if [ ! -f Dockerfile ]; then
+            echo "::notice::No Dockerfile yet (plan line 10); skipping the image build."
+            exit 0
+          fi
+          docker build -t faulttrack:ci .
+
+  ci-ok:
+    name: ci-ok
+    needs: [changes, lint, test, docker]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check job results and merge labels
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+          DO_NOT_MERGE: ${{ contains(github.event.pull_request.labels.*.name, 'do-not-merge') }}
+        run: |
+          echo "Job results:"
+          echo "$RESULTS" | jq -r 'to_entries[] | "  \(.key): \(.value.result)"'
+          status=0
+          if [ "$FAILED" = "true" ]; then
+            echo "::error::A required job failed or was cancelled."
+            status=1
+          fi
+          if [ "$DO_NOT_MERGE" = "true" ]; then
+            echo "::error::The PR has the do-not-merge label."
+            status=1
+          fi
+          exit "$status"

@@ -47,3 +47,13 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 **Why:** the spike mapped both columns to the same `(service, kind)` key and assigned into a dict, so whichever column came later overwrote the other. That is a bug, not a modeling choice. A +8 step on `carts_cpu` with a flat `carts-db_cpu` after it gave `cpu_max` −0.14 instead of about 2.1, so the injected shift vanished from the features. The result also depended on column order.
 
 **What it changes:** only cases with a `-db` service that shares a kind with its service. In RE2 that is expected to be Sock Shop (`re2ss`) only, so delay-0 rows for `re2ob` and `re2tt` should stay identical to the spike; #7 checks this on the real data. The effect on the headline and on the root-cause hit rate is reported in #7, when the feature table is rebuilt.
+
+## 2026-11-04: Rows with an empty `time` are dropped
+
+**Decision:** `data.clean_metrics()` drops rows whose `time` cell is empty (NaN or blank) before forward-filling. It still raises `ValueError` if the `time` column is missing, if a `time` cell holds text that isn't a finite number, or if no timed rows remain. The same code cleans API uploads, so an uploaded CSV with trailing untimed rows is accepted; `featurize()` still raises if the remaining rows don't cover the windows, which the API turns into a 422. The inventory records the count per case as `n_untimed_rows`. Decided by Jenna while building the feature table in #7. This is the third intended data-handling difference from the spike's code, after the two above, though unlike them it doesn't change any feature value.
+
+**Why:** in RE2-OB, `checkoutservice_cpu/2` and `checkoutservice_mem/2` end with 256 and 258 rows that have metric values but no `time`. Their timed rows cover −720 s to +209 s and +283 s around the injection, enough for every detection window. Since PR #14, `clean_metrics()` raised on any missing `time`, which would have dropped both cases (268 cases). Rows without a time can't be placed in a window, so dropping them loses nothing. The spike kept these two cases: its sort put the untimed rows last, where no window reached them, so its feature values are the same as dropping the rows.
+
+**What it changes:**
+- The feature table has all **270 cases** (1,350 rows), the same cases as the spike.
+- Spec Section 3.3 said `checkoutservice_cpu/4` has no `simple_metrics.csv`. The download has no `/4`; the 91st RE2-OB folder is `checkoutservice_cpu/multi-source-data/` (only `metrics.csv` and `inject_time.txt`). It isn't a numbered case, so `find_cases()` ignores it. The spec wording is proposed in #7.

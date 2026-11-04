@@ -169,7 +169,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
 
 **Data and features**
 - Labels come from the case folder name (`<service>_<fault>`). Build features from `simple_metrics.csv` only. Raw `metrics.csv` is stretch work.
-- Handle the known quirks in `data.py` (spec 3.3), not in callers: `ts-` and `front-end` naming, the `inf` then forward-fill then 0 sequence, the `time.1` column, and the missing `simple_metrics.csv` in `checkoutservice_cpu/4`.
+- Handle the known quirks in `data.py` (spec 3.3), not in callers: `ts-` and `front-end` naming, the `inf` then forward-fill then 0 sequence, the `time.1` column, rows with an empty `time` (dropped), and the non-case folder `checkoutservice_cpu/multi-source-data/` in RE2-OB.
 - Feature names are stable. If you rename or add one, regenerate `re2_features.parquet` and `models/feature_spec.json` in the same PR, and say so in the PR.
 
 **Notebook**

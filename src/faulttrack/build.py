@@ -39,6 +39,7 @@ from faulttrack.data import (
     kind_of,
     read_inject_time,
     read_metrics,
+    untimed_rows,
 )
 from faulttrack.features import DELAYS_S, FEATURE_NAMES, featurize
 
@@ -65,6 +66,7 @@ INVENTORY_COLUMNS: list[str] = [
     "repetition",
     "status",
     "n_rows",
+    "n_untimed_rows",
     "n_metric_cols",
     *[f"n_cols_{kind}" for kind in KINDS],
     "nan_pct",
@@ -119,7 +121,9 @@ def inventory_row(
 
     ``raw`` is the metrics file as read (for NaN and ``inf`` counts over its
     metric columns), ``metrics`` the cleaned frame (for row and column counts),
-    ``inject_time`` Unix seconds. ``inject_pos`` is where the injection falls
+    ``inject_time`` Unix seconds. ``n_rows`` counts every row in the file,
+    ``n_untimed_rows`` those with an empty ``time`` (dropped when cleaning).
+    ``inject_pos`` is where the injection falls
     in the file's time range, from 0 (first sample) to 1 (last). Values that
     can't be computed (a skipped case) are missing.
     """
@@ -141,6 +145,7 @@ def inventory_row(
         ]
         values = raw[value_cols].apply(pd.to_numeric, errors="coerce").to_numpy(float)
         row["n_rows"] = len(raw)
+        row["n_untimed_rows"] = int(untimed_rows(raw).sum()) if "time" in raw else 0
         row["nan_pct"] = float(np.isnan(values).mean() * 100) if values.size else 0.0
         row["inf_count"] = int(np.isinf(values).sum())
     if metrics is not None:
@@ -205,7 +210,13 @@ def _features_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
 
 def _inventory_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
     frame = pd.DataFrame(rows, columns=INVENTORY_COLUMNS)
-    counts = ["n_rows", "n_metric_cols", *[f"n_cols_{k}" for k in KINDS], "inf_count"]
+    counts = [
+        "n_rows",
+        "n_untimed_rows",
+        "n_metric_cols",
+        *[f"n_cols_{k}" for k in KINDS],
+        "inf_count",
+    ]
     frame = frame.astype(
         {
             **dict.fromkeys(counts, "Int64"),

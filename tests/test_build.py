@@ -74,6 +74,7 @@ def test_inventory_lists_skipped_cases_with_their_reason(tmp_path: Path) -> None
     ok = by_case.loc["re2ob/cartservice_cpu/1"]
     assert ok["status"] == STATUS_OK
     assert ok["n_rows"] == 1441
+    assert ok["n_untimed_rows"] == 0
     assert ok["n_metric_cols"] == 6
     assert ok["n_cols_cpu"] == 2
     assert ok["inf_count"] == 1

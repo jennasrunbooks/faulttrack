@@ -158,9 +158,12 @@ def clean_metrics(frame: pd.DataFrame) -> pd.DataFrame:
 
     - drops repeated-header columns (``time.1``, ``time.2``, ...)
     - drops ``latency-50`` columns (p90 latency only)
+    - drops rows whose ``time`` is empty (``untimed_rows``); two RE2-OB files
+      end with about 256 such rows, which can't be placed in time
     - raises ``ValueError`` for a raw Prometheus export (more than 20
-      ``container-`` or ``istio-`` columns), a missing ``time`` column, or a
-      ``time`` value that is empty or not a number
+      ``container-`` or ``istio-`` columns), a missing ``time`` column, a
+      ``time`` value that is text but not a finite number, or a file with no
+      timed rows left
     - converts metric values to numbers (unparseable cells become NaN), then
       ``inf`` -> NaN, sorts by ``time``, forward-fills, and fills what's left
       with 0
@@ -180,15 +183,30 @@ def clean_metrics(frame: pd.DataFrame) -> pd.DataFrame:
         c for c in columns if not c.startswith("time.") and not _is_ignored_metric(c)
     ]
     named = frame.set_axis(columns, axis="columns")
+    named = named.loc[~untimed_rows(named)]
+    if named.empty:
+        raise ValueError("metrics file has no rows with a 'time' value")
     out = pd.DataFrame(
         {c: pd.to_numeric(named[c], errors="coerce") for c in keep},
         index=named.index,
     )
     out = out.replace([np.inf, -np.inf], np.nan)
     if bool(out["time"].isna().to_numpy().any()):
-        raise ValueError("'time' column has missing or non-numeric values")
+        raise ValueError("'time' column has non-numeric values")
     out = out.sort_values(by="time", kind="mergesort").ffill().fillna(0)
     return out.reset_index(drop=True)
+
+
+def untimed_rows(frame: pd.DataFrame) -> pd.Series:
+    """Boolean mask of rows whose ``time`` cell is empty (NaN or blank text).
+
+    ``clean_metrics`` drops these rows. A ``time`` cell holding other text is
+    not "empty"; ``clean_metrics`` raises on it instead. ``frame`` must have a
+    ``time`` column (raw, as read by ``read_metrics``).
+    """
+    time = frame["time"]
+    blank = time.astype("string").str.strip().eq("").fillna(False)
+    return (time.isna() | blank).astype(bool)
 
 
 def _is_ignored_metric(column: str) -> bool:

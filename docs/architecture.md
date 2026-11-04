@@ -66,10 +66,10 @@ The dashed steps need the 4 GB raw download. Everything from `re2_features.parqu
 | Stage | Code | Input | Output |
 |---|---|---|---|
 | Download | `make data` → `spike/download_rcaeval.sh` | Zenodo record 14590730 | `data/raw/RE2-{OB,SS,TT}/…/<service>_<fault>/<n>/` with `simple_metrics.csv`, `inject_time.txt` (logs and traces aren't extracted) |
-| Discover cases | `data.find_cases()` | `data/raw/` | One entry per case: system, service, fault, repetition, path. Cases without `simple_metrics.csv` are skipped with a stderr message (RE2-OB has one: `checkoutservice_cpu/4`) |
-| Load | `data.load_case()` = `read_metrics()` + `clean_metrics()` + `inject_time.txt` + label | One case folder | Metrics frame. `inf` becomes NaN, then forward-fill, then 0. The repeated `time.1` header column is dropped, and `latency-50` is ignored. A raw Prometheus file (more than 20 `container-`/`istio-` columns) raises `ValueError`. `predict.py` cleans an uploaded CSV with the same `read_metrics()` + `clean_metrics()` |
+| Discover cases | `data.find_cases()` | `data/raw/` | One entry per case: system, service, fault, repetition, path. Cases without `simple_metrics.csv` are skipped with a stderr message (none in RE2; `checkoutservice_cpu/multi-source-data/` in RE2-OB isn't a numbered case and is ignored) |
+| Load | `data.load_case()` = `read_metrics()` + `clean_metrics()` + `inject_time.txt` + label | One case folder | Metrics frame. `inf` becomes NaN, then forward-fill, then 0. Rows with an empty `time` are dropped (two RE2-OB files end with about 256 of them); non-numeric `time` text is an error. The repeated `time.1` header column is dropped, and `latency-50` is ignored. A raw Prometheus file (more than 20 `container-`/`istio-` columns) raises `ValueError`. `predict.py` cleans an uploaded CSV with the same `read_metrics()` + `clean_metrics()` |
 | Featurize | `features.featurize()` | Metrics frame + detection time | One feature row |
-| Build table | `make features` → `faulttrack.build` | All cases × 5 detection delays | `data/features/re2_features.parquet` (1,345 rows: 269 usable cases × 5) and `data/features/re2_inventory.parquet` (one row per case folder, skipped ones with their reason) |
+| Build table | `make features` → `faulttrack.build` | All cases × 5 detection delays | `data/features/re2_features.parquet` (1,350 rows: 270 cases × 5) and `data/features/re2_inventory.parquet` (one row per case folder, skipped ones with their reason) |
 
 ## Feature computation
 

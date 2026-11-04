@@ -224,3 +224,10 @@ __marimo__/
 data/raw/
 eda/
 .venv/
+
+# FaultTrack project rules (AGENTS.md "Hard rules" 2)
+.venv*/
+*.zip
+.env.*
+!.env.example
+.claude/settings.local.json

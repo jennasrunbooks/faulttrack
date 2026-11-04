@@ -100,7 +100,7 @@ Most of the plan is a chain: the features feed the notebook, the notebook picks 
 - **One agent at a time on `notebook.ipynb`.** Notebook merge conflicts are painful to resolve by hand. If two tracks need the notebook, they take turns.
 - **Generated files have one owner per change.** Only the PR that changes `features.py` regenerates `data/features/re2_features.parquet`. Only the PR that changes training regenerates `models/` and `web/results.json`. Other PRs never commit changes to these files.
 - **Human-only files stay with humans:**
-  - `.github/`, `product-spec.md`, tags, and repo settings
+  - `.github/`, `.claude/`, `product-spec.md`, tags, and repo settings
   - Agents propose `.github/` changes in `docs/proposed-workflows/` and spec changes in the PR description.
 - **Report blocks; don't work around them.** A rejected push, a missing tool or a needed credential goes into the PR or issue as a question.
 - **Shared decisions go into the repo** (`docs/decisions.md`), not into an agent's session. The next agent starts with no memory of the last one.

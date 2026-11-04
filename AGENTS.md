@@ -113,7 +113,7 @@ Run everything from the repo root inside the devcontainer. Prefer `make` targets
 
 ## Hard rules
 
-These are enforced by the devcontainer (no Docker, no cloud credentials), the agent's fine-grained token (one repo, no Workflows permission), and branch protection on `main` (the `ci-ok` check is required). Don't try to work around a block. Report it.
+These are enforced by the devcontainer (no Docker, no cloud credentials), the agent's fine-grained token (one repo, no Workflows permission), Claude Code hooks in `.claude/`, and branch protection on `main` (the `ci-ok` check is required). Don't try to work around a block. Report it.
 
 1. **Never deploy or change hosting.**
    - No `fly` commands, no DNS changes, no certificate changes.
@@ -123,7 +123,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
    - Don't read or print `.env` or `.env.*` (`.env.example` is fine).
    - Never commit `data/raw/`, zips, `.venv*`, `.vscode/`, or credentials or tokens of any kind.
    - The only committed data is `data/features/re2_features.parquet` (with `ATTRIBUTION.md`) and the small fixture under `tests/fixtures/`.
-3. **Don't edit `.github/`** (workflows or `dependabot.yaml`).
+3. **Don't edit `.github/` or `.claude/`** (workflows or `dependabot.yaml`).
    - The agent token has no Workflows permission, so pushes that touch `.github/workflows/` are rejected.
    - Instead, put the proposed file in `docs/proposed-workflows/<name>.yaml`, and say in the PR that a human needs to move it.
 4. **Never commit to `main`.**

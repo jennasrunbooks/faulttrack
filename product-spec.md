@@ -277,6 +277,9 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 ├── models/                 # model.bin, feature_spec.json (committed; small)
 ├── web/                    # static results page served at /
 ├── tests/                  # feature parity, API smoke test; tests/fixtures/ = one small real case
+├── .claude/                # human-owned: Claude Code guardrails
+│   ├── settings.json       # deny rules + hook wiring
+│   └── hooks/              # guard_bash.py, guard_splits.py, lint_edited.py, session_brief.py, issue_context.py
 ├── .devcontainer/          # devcontainer.json + Dockerfile (dev environment)
 ├── .github/
 │   ├── workflows/ci.yaml   # path-aware lint, tests, image build on PRs

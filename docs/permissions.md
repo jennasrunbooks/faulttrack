@@ -19,7 +19,6 @@ These are known, deliberate trade-offs for a two-week course project. Each row s
 |---|---|---|---|
 | Agents can push to any branch except `main`, and can open as many PRs as they like | PAT scope (Contents: write) | Branch-per-issue work needs it, and nothing reaches `main` without review and CI | Add a ruleset restricting the agent to `ws-*`, `fix/*`, `chore/*` and `docs/*` branch names |
 | An agent could weaken a test to make CI green | Agent PRs | CI can't judge test intent. Human review checks test changes, and `AGENTS.md` forbids skipping or weakening tests | CODEOWNERS on `tests/`, requiring maintainer review |
-| No Claude Code guard hooks or deny rules | `.claude/` | The devcontainer and token already remove the dangerous capabilities: no Docker, no deploy credentials, no Workflows permission | Add `.claude/settings.json` deny rules for `fly`, `git push --force`, `git tag` and reads of `.env*` |
 | The devcontainer has open outbound network | Devcontainer | `uv sync` needs PyPI, and `make data` needs Zenodo | A network allowlist (PyPI, Zenodo, GitHub) |
 | `model.bin` is a pickle, and loading a pickle runs code | `predict.py` startup | The file comes only from this repo through reviewed PRs, and the API never loads user-supplied models | Serialize to a non-executable format, such as XGBoost JSON or skops |
 | The public API has no authentication or rate limit | Fly.io app | It's a stateless demo with no data to protect. Scale-to-zero and Fly's machine limits cap the cost | A Fly.io concurrency limit, a request rate limit in the app, or an API key for `/predict*` |
@@ -36,6 +35,7 @@ These gaps are reviewed again after the Nov 16 deadline.
 | **Devcontainer** | `.devcontainer/` | Docker (none installed), host files outside `faulttrack/` (only that folder is mounted), privilege escalation (`--cap-drop=ALL`, `--security-opt=no-new-privileges`, rootless) | Outbound network, see Accepted gaps |
 | **No deploy credentials** | The maintainer's host only | `fly deploy`, DNS and certificate changes, registry pushes. The tokens aren't in the container | none |
 | **`AGENTS.md` hard rules** | Repo | Sets expectations: no tags, no `.github/` edits, no copied code, grouped CV only, no stretch work before submission | Nothing by itself. It's guidance, backed by the layers above and by review |
+| **Claude Code guard** | `.claude/` | Force pushes, rebases, tags and releases, merging PRs, fly, pip, reading .env*, edits under `.github/` and `.claude/` | anything run outside Claude Code |
 | **Human review** | Every PR | Changes Jenna can't explain, weakened tests, leaked data or secrets, rubric regressions | Slow mistakes that look plausible. The fresh-clone check (plan line 13) is the backstop |
 
 **How the token gets in.** `GH_TOKEN` and `GIT_AUTHOR_*` come from the host environment through `${localEnv:…}` in `devcontainer.json`. They are never written to a file in the repo.

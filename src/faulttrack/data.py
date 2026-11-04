@@ -95,14 +95,18 @@ def _is_case_dir(path: Path) -> bool:
     )
 
 
-def find_cases(root: str | PathLike[str]) -> Iterator[Case]:
+def find_cases(
+    root: str | PathLike[str], include_unusable: bool = False
+) -> Iterator[Case]:
     """Yield one ``Case`` per case folder under ``root``, sorted by path.
 
     A case folder is ``<service>_<fault>/<n>/`` holding any of the RCAEval
     metrics or inject-time files. Folders without ``simple_metrics.csv``
     (raw-only cases, such as RE2-OB ``checkoutservice_cpu/4``) are skipped with
-    a message on stderr. The system name comes from the folder above the label
-    folder (``RE2-OB`` -> ``re2ob``).
+    a message on stderr, unless ``include_unusable`` is set: then they are
+    yielded too (silently), so an inventory can list them with a skip reason.
+    The system name comes from the folder above the label folder
+    (``RE2-OB`` -> ``re2ob``).
     """
     root_path = Path(root)
     candidates = sorted(
@@ -119,7 +123,7 @@ def find_cases(root: str | PathLike[str]) -> Iterator[Case]:
             service, fault = parse_label(case_dir.parent.name)
         except ValueError:
             continue
-        if not (case_dir / METRICS_FILE).is_file():
+        if not include_unusable and not (case_dir / METRICS_FILE).is_file():
             print(f"skip {case_dir}: no {METRICS_FILE}", file=sys.stderr)
             continue
         system = case_dir.parent.parent.name.lower().replace("-", "")

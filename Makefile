@@ -23,8 +23,8 @@ test: ## Run the test suite (pytest)
 data: ## Download RCAEval RE2 from Zenodo into data/raw (metrics only, about 4 GB of zips)
 	DEST=data/raw KEEP_ZIPS=0 bash spike/download_rcaeval.sh
 
-features: ## Rebuild data/features/re2_features.parquet (plan line 4)
-	@echo "make features: not implemented yet (plan line 4)" >&2; exit 1
+features: ## Rebuild data/features/re2_features.parquet + re2_inventory.parquet from data/raw
+	uv run python -m faulttrack.build
 
 train: ## Train the final model into models/ and web/results.json (plan line 8)
 	@echo "make train: not implemented yet (plan line 8)" >&2; exit 1

@@ -102,6 +102,8 @@ def test_final_model_is_a_tuned_candidate() -> None:
 def test_final_model_reproduces_the_notebook_headline() -> None:
     # The committed feature table (no data/raw/ needed). Pins the numbers the
     # notebook (section 6) and docs/decisions.md report for final_model().
+    # Intentionally strict: a scikit-learn or XGBoost bump that moves the
+    # headline should fail here, so the notebook and docs get updated with it.
     table = Path(__file__).parents[1] / "data" / "features" / "re2_features.parquet"
     result = grouped_cv(final_model(), pd.read_parquet(table))
     assert result.mean == pytest.approx(0.799, abs=5e-4)

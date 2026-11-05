@@ -77,6 +77,7 @@ src/faulttrack/
   data.py                  # case discovery, loading, dataset quirks (spec 3.3)
   features.py              # shared feature code: the ONLY place features are computed
   evaluation.py            # the ONLY CV code: grouped_cv, leave_one_system_out, suspect_hit_rate
+  models.py                # RuleBaseline, candidate_models, tuned_search, final_model (what train.py fits)
   build.py                 # `make features`: writes the feature table + inventory from data/raw/
 data/raw/                  # gitignored; filled by `make data`
 data/features/             # re2_features.parquet + re2_inventory.parquet (committed) + ATTRIBUTION.md

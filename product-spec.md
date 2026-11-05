@@ -64,8 +64,8 @@
 | Suite | Zip (download) | md5 (verified) |
 |---|---|---|
 | RE2-OB | https://zenodo.org/records/14590730/files/RE2-OB.zip?download=1 (~1.1 GB) | `b9e23f8842c404b396ffd2becff15de4` |
-| RE2-SS | https://zenodo.org/records/14590730/files/RE2-SS.zip?download=1 | check against the Zenodo page |
-| RE2-TT | https://zenodo.org/records/14590730/files/RE2-TT.zip?download=1 | check against the Zenodo page |
+| RE2-SS | https://zenodo.org/records/14590730/files/RE2-SS.zip?download=1 | `bd747a8fc7c5be00c613e13fbf9dd74b` |
+| RE2-TT | https://zenodo.org/records/14590730/files/RE2-TT.zip?download=1 | `a7fbcd1ada406067dcc50771ae398408` |
 
 **Case layout (confirmed):** `RE2-XX/RE2-XX/<service>_<fault>/<n>/` contains:
 

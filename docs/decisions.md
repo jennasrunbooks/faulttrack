@@ -57,3 +57,31 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 **What it changes:**
 - The feature table has all **270 cases** (1,350 rows), the same cases as the spike.
 - Spec Section 3.3 said `checkoutservice_cpu/4` has no `simple_metrics.csv`. The download has no `/4`; the 91st RE2-OB folder is `checkoutservice_cpu/multi-source-data/` (only `metrics.csv` and `inject_time.txt`). It isn't a numbered case, so `find_cases()` ignores it. The spec wording is proposed in #7.
+
+## 2026-11-05: Final model is a random forest (plan line 6)
+
+**Decision:** the final classifier is a random forest with `n_estimators=200`, `max_depth=None`, `min_samples_leaf=2` and `random_state=42`, defined in `faulttrack.models.final_model()`. Chosen in `notebook.ipynb` section 6 ([issue #16](https://github.com/jennasrunbooks/faulttrack/issues/16)); for Jenna to confirm in review.
+
+**Selection rule** (set in the issue before the results): the highest mean macro F1 from **nested** grouped CV; if a simpler model is within one fold std of the best, take the simpler one (simplest first: logistic regression, decision tree, random forest, XGBoost).
+
+**Evidence** (grouped 5-fold CV by `case_id`, fold seed 42, macro F1 mean ± std (min/max) across folds):
+
+| Model | Untuned | Tuned, nested CV |
+|---|---|---|
+| Dummy (most frequent) | 0.030 ± 0.002 (0.028/0.033) | — |
+| Rule (biggest shift wins) | 0.277 ± 0.038 (0.212/0.318) | — |
+| Logistic regression | 0.724 ± 0.027 (0.691/0.767) | 0.724 ± 0.024 (0.691/0.754) |
+| Decision tree | 0.663 ± 0.046 (0.593/0.714) | 0.676 ± 0.049 (0.600/0.741) |
+| **Random forest** | 0.800 ± 0.026 (0.776/0.846) | **0.800 ± 0.030 (0.778/0.859)** |
+| XGBoost | 0.773 ± 0.020 (0.746/0.797) | 0.772 ± 0.018 (0.757/0.803) |
+
+- **Why the random forest:** highest nested mean. XGBoost is the only other model within one std (0.772 ≥ 0.800 − 0.030) and is the more complex of the two, so the tie-break agrees. Logistic regression and the tree are more than one std behind.
+- **Hyperparameters** come from whole-table tuning with the same grid on the same case-grouped folds (`cv=list(grouped_splits(df))`); that search's best score was 0.799. The nested score (0.800 ± 0.030) is the unbiased estimate of the tuning procedure.
+- **Headline for `final_model()`:** `grouped_cv(final_model(), df)` gives **0.799 ± 0.028 (min 0.775, max 0.850)**, accuracy 0.807 ± 0.025. That is 0.001 below the sanity check in #7 (untuned RF, 0.800 ± 0.026), so it is not a metrics change. `tests/test_models.py` pins it.
+- **Seed sensitivity:** with fold seeds 0–4 the mean is 0.787, 0.803, 0.823, 0.797 and 0.803 (mean 0.803, range 0.036). The headline stays seed 42; differences under about 0.03 between models aren't meaningful.
+- **Tuning barely matters:** no model moved by more than 0.013 between untuned and tuned (nested).
+- **Also reported in the notebook:** macro one-vs-rest ROC AUC 0.974; macro F1 0.787–0.806 at each detection delay from 0 to 120 s; main confusions delay ↔ loss (56/54 rows) and cpu ↔ socket (40/47); a depth-3 runbook tree at 0.570 ± 0.067. The suspect-service rule's hit rate is 0.900 per alert window, reported separately as a rule.
+
+**What it changes:** `train.py` (plan line 8) fits `final_model()` on all rows. The README's results section quotes 0.799 ± 0.028 as the headline, with the nested 0.800 ± 0.030 and the seed range next to it.
+
+**Nested-tuning note:** `grouped_cv` now passes `groups=` (the training fold's `case_id`) to a `GridSearchCV` or `RandomizedSearchCV`, so a search with `cv=GroupKFold(5)` is nested and grouped. `cv=list(grouped_splits(df))` is for whole-table tuning only: inside nested CV those indices would refer to the full table and leak outer-test cases into the inner search.

@@ -147,7 +147,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
    - Don't re-implement feature logic inline in the notebook.
 7. **Evaluation must be grouped by case.**
    - There are 5 windows per case, so use `GroupKFold` (or leave-one-system-out) with `groups=case_id`.
-   - Use `faulttrack.evaluation.grouped_cv` / `leave_one_system_out` rather than writing CV loops. For grouped tuning, pass `cv=list(faulttrack.evaluation.grouped_splits(df))` to `GridSearchCV`, so tuning uses the same case-grouped folds as `grouped_cv`.
+   - Use `faulttrack.evaluation.grouped_cv` / `leave_one_system_out` rather than writing CV loops. For whole-table tuning only, pass `cv=list(faulttrack.evaluation.grouped_splits(df))` to `GridSearchCV`, so tuning uses the same case-grouped folds as `grouped_cv`; nested tuning passes `groups=` via `grouped_cv` (give the search `cv=GroupKFold(5)`, as `faulttrack.models.tuned_search` does).
    - Never use random row-level splits (`train_test_split`, plain `KFold`, `cross_val_score` without groups). They leak windows of the same case into both train and test.
    - Report macro F1 as **mean ± std (min/max) across folds**.
    - The headline is grouped 5-fold CV across all 3 systems. Leave-one-system-out is the separate "Generalizing to an unseen system" section.

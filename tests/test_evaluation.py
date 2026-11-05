@@ -8,10 +8,12 @@ import pytest
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV, GroupKFold
 
 from faulttrack.evaluation import (
     LABELS,
     grouped_cv,
+    grouped_permutation_importance,
     grouped_splits,
     leave_one_system_out,
     suspect_hit_rate,
@@ -162,3 +164,97 @@ def test_suspect_hit_rate_counts_rows_and_merges_db_suffix() -> None:
         }
     )
     assert suspect_hit_rate(df) == pytest.approx(0.5)
+
+
+# Filled by the spies below. Module-level because GridSearchCV clones (deep
+# copies) its estimator and cv, so state kept on an instance would be lost.
+_INNER_FITS: list[pd.Index] = []
+_INNER_GROUPS: list[np.ndarray] = []
+
+
+class _IndexSpy(_ColumnSpy):
+    """Records the row index of every fit, then behaves like ``_ColumnSpy``."""
+
+    def __init__(self, depth: int = 1) -> None:
+        self.depth = depth  # a dummy hyperparameter for the grid
+
+    def fit(self, X: pd.DataFrame, y: np.ndarray) -> "_IndexSpy":
+        _INNER_FITS.append(X.index)
+        super().fit(X, y)
+        return self
+
+
+class _GroupSpy(GroupKFold):
+    """``GroupKFold`` that records the ``groups`` the search passes to it."""
+
+    def split(self, X, y=None, groups=None):  # noqa: ANN001, ANN201
+        assert groups is not None, "search was fit without groups="
+        _INNER_GROUPS.append(np.asarray(groups))
+        return super().split(X, y, groups)
+
+
+def test_nested_search_never_sees_an_outer_test_case() -> None:
+    df = _table()
+    cases = df["case_id"].to_numpy()
+    _INNER_FITS.clear()
+    _INNER_GROUPS.clear()
+    search = GridSearchCV(
+        _IndexSpy(), {"depth": [1, 2]}, cv=_GroupSpy(n_splits=3), scoring="accuracy"
+    )
+    grouped_cv(search, df)
+
+    outer = list(grouped_splits(df))
+    # one inner split call per outer fold, on exactly the outer training cases
+    assert len(_INNER_GROUPS) == len(outer)
+    for groups, (train, _) in zip(_INNER_GROUPS, outer, strict=True):
+        assert np.array_equal(groups, cases[train])
+    # per outer fold: 2 candidates x 3 inner folds, then 1 refit
+    fits_per_fold = 2 * 3 + 1
+    assert len(_INNER_FITS) == fits_per_fold * len(outer)
+    for k, (train, test) in enumerate(outer):
+        test_cases = set(cases[test])
+        fold_fits = _INNER_FITS[k * fits_per_fold : (k + 1) * fits_per_fold]
+        for rows in fold_fits:
+            seen = set(df.loc[rows, "case_id"])
+            assert not seen & test_cases
+            assert seen <= set(cases[train])
+        # the refit uses the whole outer training fold
+        assert set(fold_fits[-1]) == set(df.index[train])
+
+
+def test_grouped_cv_passes_groups_to_a_search() -> None:
+    # GroupKFold raises if groups= is missing, so this fails without the fix
+    df = _table()
+    search = GridSearchCV(
+        DummyClassifier(), {"strategy": ["most_frequent", "prior"]}, cv=GroupKFold(3)
+    )
+    result = grouped_cv(search, df)
+    assert result.n_folds == 5
+
+
+def test_out_of_fold_probabilities_and_roc_auc() -> None:
+    df = _table()
+    result = grouped_cv(RandomForestClassifier(n_estimators=50, random_state=42), df)
+    assert result.y_proba is not None
+    assert result.y_proba.shape == (len(df), len(LABELS))
+    assert np.allclose(result.y_proba.sum(axis=1), 1.0)
+    assert result.fold is not None
+    assert sorted(set(result.fold.tolist())) == [0, 1, 2, 3, 4]
+    auc = result.roc_auc_ovr
+    assert auc is not None and set(auc) == {*LABELS, "macro"}
+    assert auc["macro"] > 0.9
+    json.dumps(result.to_dict())
+
+    no_proba = grouped_cv(_ColumnSpy(), df)
+    assert no_proba.y_proba is None and no_proba.roc_auc_ovr is None
+
+
+def test_grouped_permutation_importance_finds_the_signal() -> None:
+    df = _table()
+    table = grouped_permutation_importance(
+        RandomForestClassifier(n_estimators=50, random_state=42), df, n_repeats=3
+    )
+    assert list(table.columns) == ["mean", "std", "min", "max"]
+    assert set(table.index) == set(FEATURE_NAMES)
+    # each fault raises one of the first 6 features, so those carry the signal
+    assert set(table.index[:6]) == set(FEATURE_NAMES[:6])

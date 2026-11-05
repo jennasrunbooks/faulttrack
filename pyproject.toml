@@ -55,3 +55,5 @@ exclude = ["spike", "**/__pycache__", "**/.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# predict.py sits at the repo root (course layout), so tests can import it.
+pythonpath = ["."]

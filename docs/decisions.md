@@ -89,3 +89,49 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 **What it changes:** `train.py` (plan line 8) fits `final_model()` on all rows. The README's results section quotes the headline as above, with the seed range next to it.
 
 **Nested-tuning note:** `grouped_cv` now passes `groups=` (the training fold's `case_id`) to a `GridSearchCV` or `RandomizedSearchCV`, so a search with `cv=GroupKFold(5)` is nested and grouped. `cv=list(grouped_splits(df))` is for whole-table tuning only: inside nested CV those indices would refer to the full table and leak outer-test cases into the inner search.
+
+## 2026-11-05: Leave-one-system-out re-measured on the committed table (plan line 7)
+
+**Result:** leave-one-system-out (LOSO; train on two systems, test on the third) for `final_model()` gives **macro F1 0.568 ± 0.114** across the 3 held-out systems: OB 0.655, SS 0.643, TT 0.407. It is in `notebook.ipynb` section 8.1 ([issue #17](https://github.com/jennasrunbooks/faulttrack/issues/17)). The mean ± std is across 3 systems, not folds.
+
+| Model | LOSO: OB | LOSO: SS | LOSO: TT | LOSO mean ± std | Grouped CV (headline) |
+|---|---|---|---|---|---|
+| Random forest (`final_model()`) | 0.655 | 0.643 | 0.407 | **0.568 ± 0.114** | 0.799 ± 0.028 |
+| Logistic regression (untuned) | 0.583 | 0.606 | 0.303 | 0.497 ± 0.138 | 0.724 ± 0.027 |
+| Rule (biggest shift wins) | 0.199 | 0.279 | 0.288 | 0.255 ± 0.040 | 0.277 ± 0.038 |
+
+- **Higher than the spike's 0.364 ± 0.112.** HGB, the spike's LOSO model, gets 0.553 ± 0.065 on the committed table, so the change comes from the features rebuilt after the spike (the window anchoring and `-db` entries above), not from the model. The spike's feature version can't be rebuilt without `data/raw/`, so the cause isn't split further.
+- **Tuning isn't the reason:** `FINAL_PARAMS` were tuned on all three systems, but the untuned forest scores 0.559 ± 0.118.
+- **Per system:** the final model's grouped-CV out-of-fold rows score OB 0.769, SS 0.759, TT 0.896 (pooled). Held out, OB and SS lose about 0.11 each and TT loses 0.489.
+- **Why:** partly system size (TT has 68 services against 11, and the `<kind>_abssum` and `<kind>_n_gt3` features add up over services); mainly domain shift. In TT a memory fault shifts `diskio` (median `diskio_max` 6.91, against 0.07 and 0.32 in OB and SS), so with TT held out all 75 memory rows are predicted as disk. delay ↔ loss is the main confusion across systems (190 of 1,350 rows, against 110 under grouped CV). Only 31 LOSO errors mix a resource fault with a network fault.
+
+**What it changes:** nothing in the code. The 2026-11-03 entry set a 0.45 LOSO threshold for making LOSO the headline, and 0.568 is now above it. **The headline stays grouped CV pending Jenna's decision** (issue #17 hand-off; the default is no change). The README limitation text is at the end of notebook section 8.5.
+
+## 2026-11-05: `--norm-counts` gives a small LOSO gain; not adopted (plan line 7)
+
+**Experiment:** replace `<kind>_abssum` and `<kind>_n_gt3` with `<kind>_absmean` and `<kind>_frac_gt3` (divided by `max(n_services_<kind>, 1)`), rebuilt in memory from the committed table and checked against `featurize(norm_counts=True)` on the fixture case. Notebook section 8.3.
+
+| `final_model()` | LOSO mean ± std (seed 42) | Grouped CV (fold seed 42) | LOSO mean, seeds 0–4 | Grouped CV mean, seeds 0–4 |
+|---|---|---|---|---|
+| Headline features | 0.568 ± 0.114 | 0.799 ± 0.028 (0.775/0.850) | 0.572 | 0.803 |
+| Norm-counts | 0.600 ± 0.095 | 0.775 ± 0.023 (0.746/0.814) | 0.596 | 0.798 |
+
+- **LOSO:** +0.013 to +0.039 at every forest seed (mean +0.024), mostly on TT (+0.058 at seed 42), where it cuts the cpu → socket errors from 54 to 11 rows. It doesn't fix TT's mem → disk errors (74 of 75), and it moves loss → delay from 45 to 66 rows.
+- **Grouped CV:** −0.005 on average over fold seeds 0–4 (from −0.013 to +0.002); the −0.024 at seed 42 is mostly that one fold split.
+- **Logistic regression:** LOSO falls (0.497 → 0.462), although TT rises as in the spike (0.303 → 0.370).
+
+**Decision:** not adopted; the headline features stay. The gain is consistent but small (under the 0.05 that `AGENTS.md` treats as a metrics change), leaves LOSO about 0.20 below grouped CV, and adopting it would mean regenerating the feature table, `models/` and the API's feature spec 11 days before submission. If Jenna wants it, it goes in a follow-up issue (`features.py`, feature table and `final_model()` are out of scope for #17).
+
+## 2026-11-05: Relative (per-system standardized) features don't help; not adopted (plan line 7)
+
+**Experiment:** standardize every feature within each system (mean and std, `ddof=0`) using only that system's rows and no labels: each training system with its own rows, the held-out system with its own rows when it is scored. Time-boxed to half a day. Notebook section 8.4.
+
+| Model | LOSO mean ± std, headline | LOSO mean ± std, relative |
+|---|---|---|
+| Random forest (`final_model()`) | 0.568 ± 0.114 | 0.571 ± 0.120 (OB 0.706, SS 0.594, TT 0.414) |
+| Logistic regression | 0.497 ± 0.138 | 0.533 ± 0.073 (TT 0.303 → 0.431) |
+
+- With the held-out system's statistics from only 18 random cases (20%, 5 draws), LOSO is 0.574 (0.555–0.590) for the forest and 0.529 for logistic regression, so the result doesn't depend on having many windows. The fault mix of those windows isn't tested (RE2 is balanced by design).
+- Grouped CV for the forest has the same mean ± std (0.799 ± 0.028; fold min/max 0.761/0.844 against 0.775/0.850), with each system's statistics taken over all its rows, test folds included (unlabeled). TT's mem → disk errors stay at 75 of 75.
+
+**Decision:** not adopted. No change to the final model's LOSO score; the gain for logistic regression doesn't bring it up to the forest. The experiment stopped inside the time box.

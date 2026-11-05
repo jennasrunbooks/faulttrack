@@ -92,6 +92,8 @@
 | …with `diskio` | 5 | 9 | 67 |
 | …with latency | 10 | 7 | 28 |
 
+These counts are from the go/no-go spike, before each service was merged with its `-db`. After the merge Sock Shop has 11 services. The notebook's §2.3 table, built from `re2_inventory.parquet`, is the authoritative count.
+
 ### 3.5 Data handling in the repo
 
 - **Raw data:** `data/raw/` is **gitignored**. `make data` downloads it from Zenodo and extracts metrics only.
@@ -130,9 +132,9 @@ Compare all of these on the same grouped folds, and tune each:
 | Multinomial logistic regression | linear model + coefficient interpretation | `C` |
 | Decision tree (depth 3–4) | the **on-call runbook** plot | `max_depth`, `min_samples_leaf` |
 | Random forest | ensemble | `n_estimators`, `max_depth`, `min_samples_leaf` |
-| XGBoost | gradient boosting | `eta`, `max_depth`, `min_child_weight`, `n_estimators`, early stopping |
+| XGBoost | gradient boosting | `learning_rate`, `max_depth`, `min_child_weight`, `n_estimators` (tuned in the grid instead of early stopping) |
 
-**The final model** is chosen on grouped-CV macro F1, accounting for the fold spread.
+**The final model** is chosen on grouped-CV macro F1, accounting for the fold spread. Chosen in plan line 6: a random forest (`faulttrack.models.final_model()`), 0.799 ± 0.028 macro F1 (nested tuning: 0.800 ± 0.030); see `docs/decisions.md`.
 
 ### 5.2 Evaluation (README "Results")
 
@@ -140,7 +142,7 @@ Compare all of these on the same grouped folds, and tune each:
 - **Also reported:**
   - per-class precision, recall and F1, plus the confusion matrix, with written explanations of the main confusions
   - one-vs-rest ROC AUC
-  - F1 against detection delay (0 / 30 / 60 / 120 s)
+  - F1 against detection delay (0 / 30 / 60 / 90 / 120 s)
   - the root-cause service hit rate of the no-ML most-anomalous-service rule
   - feature importance: XGBoost gain, permutation importance, and the depth-3 tree
 - **"Generalizing to an unseen system":** leave-one-system-out results (train on two systems, test on the third), the system-size diagnostic, the `--norm-counts` experiment, and the relative-features experiment if done. Presented as a limitation, with analysis.
@@ -283,7 +285,8 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 ├── tests/                  # feature parity, API smoke test; tests/fixtures/ = one small real case
 ├── .claude/                # human-owned: Claude Code guardrails
 │   ├── settings.json       # deny rules + hook wiring
-│   └── hooks/              # guard_bash.py, guard_splits.py, lint_edited.py, session_brief.py, issue_context.py
+│   ├── hooks/              # guard_bash.py, guard_splits.py, lint_edited.py, session_brief.py, issue_context.py
+│   └── agents/qa-reviewer.md  # QA subagent for high-risk PRs (plan lines 4, 6, 7)
 ├── .devcontainer/          # devcontainer.json + Dockerfile (dev environment)
 ├── .github/
 │   ├── workflows/ci.yaml   # path-aware lint, tests, image build on PRs
@@ -347,8 +350,8 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 | 2 | Repo access | `jksprattler-agent` fine-grained PAT scoped to `jennasrunbooks/faulttrack`; `dev-agent` env updated | Tue Nov 3 | Done (Nov 4) |
 | 3 | Repo scaffold | `product-spec.md`, `AGENTS.md`, `LICENSE`, `.gitignore`, `.devcontainer/`, `pyproject.toml` (deps + `[build-system]` + ruff + pyright), `src/faulttrack/__init__.py`, `uv.lock`, `Makefile` skeleton, `data/README.md`, `data/features/ATTRIBUTION.md`; **PR CI** `.github/workflows/ci.yaml`, path-aware (see below); branch protection on `main` requiring the single `ci-ok` check; `.github/dependabot.yaml` + Dependabot security alerts on (see below) | Wed Nov 4 | Done (Nov 4) |
 | 4 | Shared library | `src/faulttrack/data.py` + `features.py` ported from `spike/`; parity test fixture; `make data`, `make features`; committed `re2_features.parquet` | Thu Nov 5 | Done (Nov 4) |
-| 5 | Notebook: prep + EDA | Data prep, quirks, class balance, per-fault signature plots, disk telemetry gap, scaling before/after, system-size table, mutual information + correlation | Sat Nov 7 | ☐ |
-| 6 | Notebook: models | Dummy, rule baseline, LR, DT (runbook), RF, XGBoost; grouped CV with tuning; per-class metrics; confusion matrix; ROC AUC; detection-delay curve; final model choice | Mon Nov 9 | ☐ |
+| 5 | Notebook: prep + EDA | Data prep, quirks, class balance, per-fault signature plots, disk telemetry gap, scaling before/after, system-size table, mutual information + correlation | Sat Nov 7 | Done (Nov 5) |
+| 6 | Notebook: models | Dummy, rule baseline, LR, DT (runbook), RF, XGBoost; grouped CV with tuning; per-class metrics; confusion matrix; ROC AUC; detection-delay curve; final model choice | Mon Nov 9 | Done (Nov 5) |
 | 7 | Generalization analysis | Leave-one-system-out; `--norm-counts`; relative-features experiment (time-boxed to half a day); write-up | Tue Nov 10 | ☐ |
 | 8 | `train.py` | Trains the final model; writes `models/model.bin`, `feature_spec.json`, `web/results.json` | Tue Nov 10 | ☐ |
 | 9 | `predict.py` + tests | FastAPI `/`, `/predict`, `/predict/case`, `/healthz`; Pydantic models; parity + API smoke tests | Thu Nov 12 | ☐ |

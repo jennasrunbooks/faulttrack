@@ -30,7 +30,7 @@ train: ## Train the final model into models/ and web/results.json (plan line 8)
 	@echo "make train: not implemented yet (plan line 8)" >&2; exit 1
 
 serve: ## Serve the API locally on port 8080 (plan line 9)
-	@echo "make serve: not implemented yet (plan line 9)" >&2; exit 1
+	uv run uvicorn predict:app --port 8080
 
 docker-build: ## Build the service image; host only (plan line 10)
 	@echo "make docker-build: not implemented yet (plan line 10)" >&2; exit 1

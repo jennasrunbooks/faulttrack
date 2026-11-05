@@ -20,13 +20,15 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.base import clone
+from sklearn.inspection import permutation_importance
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
     f1_score,
     precision_recall_fscore_support,
+    roc_auc_score,
 )
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import GridSearchCV, GroupKFold, RandomizedSearchCV
 
 from faulttrack.data import FAULTS
 from faulttrack.features import FEATURE_NAMES
@@ -52,6 +54,9 @@ class CVResult:
     predictions, with classes in ``LABELS`` order (confusion rows are true
     labels, columns predicted). ``delay_macro_f1`` maps each detection delay
     (seconds) to its per-fold macro F1 scores, when the frame has ``delay_s``.
+    ``fold`` gives the test fold (0-based) of every pooled row. ``y_proba``
+    holds the out-of-fold class probabilities (columns in ``LABELS`` order)
+    when the model has ``predict_proba``, else ``None``.
     """
 
     fold_macro_f1: list[float]
@@ -61,6 +66,8 @@ class CVResult:
     index: pd.Index
     labels: tuple[str, ...] = LABELS
     delay_macro_f1: dict[int, list[float]] = field(default_factory=dict)
+    fold: np.ndarray | None = None
+    y_proba: np.ndarray | None = None
 
     @property
     def n_folds(self) -> int:
@@ -129,6 +136,22 @@ class CVResult:
         """Pooled confusion matrix: rows true, columns predicted, label order."""
         return confusion_matrix(self.y_true, self.y_pred, labels=list(self.labels))
 
+    @property
+    def roc_auc_ovr(self) -> dict[str, float] | None:
+        """Pooled one-vs-rest ROC AUC per class, plus ``"macro"`` (their mean).
+
+        Computed on the out-of-fold probabilities; ``None`` when the model has
+        no ``predict_proba``.
+        """
+        if self.y_proba is None:
+            return None
+        auc = {
+            label: float(roc_auc_score(self.y_true == label, self.y_proba[:, i]))
+            for i, label in enumerate(self.labels)
+        }
+        auc["macro"] = float(np.mean(list(auc.values())))
+        return auc
+
     def delay_summary(self) -> dict[int, dict[str, float]]:
         """Per detection delay (seconds): macro F1 mean, std, min and max."""
         return {delay: _stats(scores) for delay, scores in self.delay_macro_f1.items()}
@@ -155,6 +178,7 @@ class CVResult:
             "macro_f1_by_delay": {
                 str(delay): stats for delay, stats in self.delay_summary().items()
             },
+            "roc_auc_ovr": self.roc_auc_ovr,
         }
 
 
@@ -235,6 +259,14 @@ def grouped_cv(
     for every fold, fit on the ``feature_names`` columns only (``FEATURE_NAMES``
     by default, never the identity columns), and trained on integer labels in
     ``LABELS`` order so XGBoost works too. Returns a ``CVResult``.
+
+    **Nested CV:** when ``model`` is a ``GridSearchCV`` or
+    ``RandomizedSearchCV``, its ``fit`` gets ``groups=`` set to the training
+    fold's ``case_id``. Give the search a group-aware splitter such as
+    ``cv=GroupKFold(5)``: the inner search then tunes on the outer training
+    cases only, and each outer test fold scores cases the search never saw.
+    Don't pass ``cv=list(grouped_splits(df))`` to a nested search; those
+    indices refer to the whole table, not the training fold.
     """
     return _cross_validate(
         model, df, list(grouped_splits(df, n_splits, seed)), feature_names
@@ -259,6 +291,49 @@ def leave_one_system_out(
     return LOSOResult(per_system=per_system)
 
 
+def grouped_permutation_importance(
+    model: Any,
+    df: pd.DataFrame,
+    n_splits: int = 5,
+    seed: int = SEED,
+    n_repeats: int = 10,
+    feature_names: Sequence[str] = FEATURE_NAMES,
+) -> pd.DataFrame:
+    """Permutation importance on grouped out-of-fold data.
+
+    Uses the same folds as ``grouped_cv`` (same ``n_splits`` and ``seed``). For
+    each fold, a clone of ``model`` is fit on the training cases and each
+    feature is shuffled ``n_repeats`` times on the held-out cases
+    (``random_state=seed``); importance is the drop in macro F1. Returns one
+    row per feature, sorted by ``mean`` (the drop averaged over folds, in macro
+    F1 units), with ``std``, ``min`` and ``max`` of the per-fold means.
+    """
+    x, y = _xy(df, feature_names)
+    per_fold = []
+    for train, test in grouped_splits(df, n_splits, seed):
+        fitted = _fit(model, x, y, train, df)
+        result: Any = permutation_importance(
+            fitted,
+            x.iloc[test],
+            y[test],
+            scoring="f1_macro",
+            n_repeats=n_repeats,
+            random_state=seed,
+        )
+        per_fold.append(np.asarray(result.importances_mean, dtype=float))
+    folds = np.vstack(per_fold)
+    table = pd.DataFrame(
+        {
+            "mean": folds.mean(axis=0),
+            "std": folds.std(axis=0),
+            "min": folds.min(axis=0),
+            "max": folds.max(axis=0),
+        },
+        index=pd.Index(list(feature_names), name="feature"),
+    )
+    return table.sort_values("mean", ascending=False)
+
+
 def suspect_hit_rate(df: pd.DataFrame) -> float:
     """Share of rows where the rule's ``suspect_service`` is the injected service.
 
@@ -280,21 +355,25 @@ def _cross_validate(
     splits: list[Split],
     feature_names: Sequence[str],
 ) -> CVResult:
-    unknown = sorted(set(df["fault"]) - set(LABELS))
-    if unknown:
-        raise ValueError(f"unknown fault labels: {unknown}")
-    x = df.loc[:, list(feature_names)]
-    codes = {label: i for i, label in enumerate(LABELS)}
-    y = np.array([codes[label] for label in df["fault"]], dtype=int)
+    x, y = _xy(df, feature_names)
     delays = df["delay_s"].to_numpy() if "delay_s" in df.columns else None
     pred = np.full(len(df), -1)
+    fold_of = np.full(len(df), -1)
+    proba: np.ndarray | None = np.zeros((len(df), len(LABELS)))
     fold_f1: list[float] = []
     fold_acc: list[float] = []
     delay_f1: dict[int, list[float]] = {}
-    for train, test in splits:
-        estimator: Any = clone(model)
-        fitted = estimator.fit(x.iloc[train], y[train])
+    for k, (train, test) in enumerate(splits):
+        fitted = _fit(model, x, y, train, df)
         pred[test] = np.asarray(fitted.predict(x.iloc[test])).astype(int)
+        fold_of[test] = k
+        if proba is not None and hasattr(fitted, "predict_proba"):
+            fold_proba = np.asarray(fitted.predict_proba(x.iloc[test]), dtype=float)
+            # A fold whose training rows lack a class gets 0 for that class.
+            columns = np.asarray(fitted.classes_).astype(int)
+            proba[np.ix_(test, columns)] = fold_proba
+        else:
+            proba = None
         fold_f1.append(_macro_f1(y[test], pred[test]))
         fold_acc.append(float(accuracy_score(y[test], pred[test])))
         if delays is not None:
@@ -311,7 +390,36 @@ def _cross_validate(
         y_pred=names[pred[tested]],
         index=df.index[tested],
         delay_macro_f1=dict(sorted(delay_f1.items())),
+        fold=fold_of[tested],
+        y_proba=None if proba is None else proba[tested],
     )
+
+
+def _xy(
+    df: pd.DataFrame, feature_names: Sequence[str]
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Model inputs (the ``feature_names`` columns) and labels as ``LABELS`` codes."""
+    unknown = sorted(set(df["fault"]) - set(LABELS))
+    if unknown:
+        raise ValueError(f"unknown fault labels: {unknown}")
+    codes = {label: i for i, label in enumerate(LABELS)}
+    y = np.array([codes[label] for label in df["fault"]], dtype=int)
+    return df.loc[:, list(feature_names)], y
+
+
+def _fit(
+    model: Any, x: pd.DataFrame, y: np.ndarray, train: np.ndarray, df: pd.DataFrame
+) -> Any:
+    """Fit a clone of ``model`` on the ``train`` rows.
+
+    A hyperparameter search also gets ``groups=`` (the training rows'
+    ``case_id``), so its inner splits stay grouped by case.
+    """
+    estimator: Any = clone(model)
+    if isinstance(estimator, GridSearchCV | RandomizedSearchCV):
+        groups = df["case_id"].to_numpy()[train]
+        return estimator.fit(x.iloc[train], y[train], groups=groups)
+    return estimator.fit(x.iloc[train], y[train])
 
 
 def _macro_f1(y_true: np.ndarray, y_pred: np.ndarray) -> float:

@@ -60,7 +60,7 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 
 ## 2026-11-05: Final model is a random forest (plan line 6)
 
-**Decision:** the final classifier is a random forest with `n_estimators=200`, `max_depth=None`, `min_samples_leaf=2` and `random_state=42`, defined in `faulttrack.models.final_model()`. Chosen in `notebook.ipynb` section 6 ([issue #16](https://github.com/jennasrunbooks/faulttrack/issues/16)); for Jenna to confirm in review.
+**Decision:** the final classifier is a random forest with `n_estimators=200`, `max_depth=None`, `min_samples_leaf=2` and `random_state=42`, defined in `faulttrack.models.final_model()`. Chosen in `notebook.ipynb` section 6 ([issue #16](https://github.com/jennasrunbooks/faulttrack/issues/16)); confirmed by Jenna in [review of PR #23](https://github.com/jennasrunbooks/faulttrack/pull/23#issuecomment-6671543660).
 
 **Selection rule** (set in the issue before the results): the highest mean macro F1 from **nested** grouped CV; if a simpler model is within one fold std of the best, take the simpler one (simplest first: logistic regression, decision tree, random forest, XGBoost).
 
@@ -82,6 +82,10 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 - **Tuning barely matters:** no model moved by more than 0.013 between untuned and tuned (nested).
 - **Also reported in the notebook:** macro one-vs-rest ROC AUC 0.974; macro F1 0.787–0.806 at each detection delay from 0 to 120 s; main confusions delay ↔ loss (56/54 rows) and cpu ↔ socket (40/47); a depth-3 runbook tree at 0.570 ± 0.067. The suspect-service rule's hit rate is 0.900 per alert window, reported separately as a rule.
 
-**What it changes:** `train.py` (plan line 8) fits `final_model()` on all rows. The README's results section quotes 0.799 ± 0.028 as the headline, with the nested 0.800 ± 0.030 and the seed range next to it.
+**Headline (decided by Jenna in the same review):** quote **0.799 ± 0.028**, the score of the exact model `train.py` reproduces, with the nested **0.800 ± 0.030** next to it. Both are shown because the shipped hyperparameters were chosen on the same seed-42 folds that score them, so the nested number is the unbiased estimate of the tune-then-fit procedure.
+
+**No XGBoost early stopping** (spec 5.1 listed it): XGBoost isn't the final model, the grid tunes `n_estimators` directly, and early stopping would need its own grouped validation split inside each fold. The spec is updated to match (maintainer change).
+
+**What it changes:** `train.py` (plan line 8) fits `final_model()` on all rows. The README's results section quotes the headline as above, with the seed range next to it.
 
 **Nested-tuning note:** `grouped_cv` now passes `groups=` (the training fold's `case_id`) to a `GridSearchCV` or `RandomizedSearchCV`, so a search with `cv=GroupKFold(5)` is nested and grouped. `cv=list(grouped_splits(df))` is for whole-table tuning only: inside nested CV those indices would refer to the full table and leak outer-test cases into the inner search.

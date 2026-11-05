@@ -23,6 +23,7 @@ from faulttrack.data import clean_metrics, read_metrics
 from faulttrack.features import (
     BASELINE_S,
     FEATURE_NAMES,
+    LOG_Z,
     POST_S,
     Z_FLOOR,
     featurize,
@@ -66,11 +67,12 @@ def client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
     (tmp / "feature_spec.json").write_text(
         json.dumps(
             {
-                "features": FEATURE_NAMES,
+                "feature_names": FEATURE_NAMES,
                 "classes": CLASSES,
                 "baseline_s": BASELINE_S,
                 "post_s": POST_S,
                 "z_floor": Z_FLOOR,
+                "log_z": LOG_Z,
                 "model_version": "test-1",
             }
         )
@@ -321,11 +323,12 @@ def test_results_without_metric_keys_fails_naming_the_key(
     (app_dir / "feature_spec.json").write_text(
         json.dumps(
             {
-                "features": FEATURE_NAMES,
+                "feature_names": FEATURE_NAMES,
                 "classes": CLASSES,
                 "baseline_s": BASELINE_S,
                 "post_s": POST_S,
                 "z_floor": Z_FLOOR,
+                "log_z": LOG_Z,
                 "model_version": "t",
             }
         )

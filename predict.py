@@ -96,8 +96,8 @@ class SuspectBlock(BaseModel):
     )
     rule: str = Field(description="Plain-text description of the rule.")
     hit_rate: float = Field(
-        description="Share of RE2 cases where the rule names the injected "
-        "service, from results.json."
+        description="Share of RE2 detection windows (5 per case) where the rule "
+        "names the injected service, from results.json."
     )
 
 
@@ -136,6 +136,7 @@ class Bundle:
     baseline_s: float
     post_s: float
     z_floor: float
+    log_z: bool
     norm_counts: bool
     cv_macro_f1: float
     hit_rate: float
@@ -179,12 +180,12 @@ def load_bundle(model_dir: Path, results_path: Path) -> Bundle:
     except (OSError, pickle.UnpicklingError, EOFError, AttributeError) as e:
         raise RuntimeError(f"cannot load {model_path}: {e}") from e
 
-    features = [str(f) for f in _require(spec, "features", spec_path)]
+    features = [str(f) for f in _require(spec, "feature_names", spec_path)]
     classes = [str(c) for c in _require(spec, "classes", spec_path)]
     norm_counts = bool(spec.get("norm_counts", False))
     if features != feature_names(norm_counts):
         raise RuntimeError(
-            f"{spec_path}: 'features' doesn't match faulttrack.features "
+            f"{spec_path}: 'feature_names' doesn't match faulttrack.features "
             f"(norm_counts={norm_counts}); regenerate it with train.py"
         )
     model_classes = [str(c) for c in getattr(model, "classes_", [])]
@@ -208,6 +209,7 @@ def load_bundle(model_dir: Path, results_path: Path) -> Bundle:
         baseline_s=float(_require(spec, "baseline_s", spec_path)),
         post_s=float(_require(spec, "post_s", spec_path)),
         z_floor=float(_require(spec, "z_floor", spec_path)),
+        log_z=bool(_require(spec, "log_z", spec_path)),
         norm_counts=norm_counts,
         cv_macro_f1=metrics[RESULTS_FAULT_KEY],
         hit_rate=metrics[RESULTS_SUSPECT_KEY],
@@ -340,6 +342,7 @@ def create_app(
                 baseline_s=bundle.baseline_s,
                 post_s=bundle.post_s,
                 z_floor=bundle.z_floor,
+                log_z=bundle.log_z,
                 norm_counts=bundle.norm_counts,
             )
         except ValueError as e:

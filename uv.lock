@@ -379,7 +379,6 @@ dependencies = [
     { name = "python-multipart" },
     { name = "scikit-learn" },
     { name = "uvicorn" },
-    { name = "xgboost" },
 ]
 
 [package.dev-dependencies]
@@ -391,6 +390,7 @@ dev = [
     { name = "matplotlib" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "xgboost" },
 ]
 
 [package.metadata]
@@ -402,7 +402,6 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.33" },
     { name = "scikit-learn", specifier = ">=1.9.1" },
     { name = "uvicorn", specifier = ">=0.54.0" },
-    { name = "xgboost", specifier = ">=3.4.1" },
 ]
 
 [package.metadata.requires-dev]
@@ -414,6 +413,7 @@ dev = [
     { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "pytest", specifier = ">=9.2.0" },
     { name = "ruff", specifier = ">=0.17.3" },
+    { name = "xgboost", specifier = ">=3.4.1" },
 ]
 
 [[package]]

@@ -14,7 +14,6 @@ dependencies = [
     "python-multipart>=0.0.33",
     "scikit-learn>=1.9.1",
     "uvicorn>=0.54.0",
-    "xgboost>=3.4.1",
 ]
 
 [build-system]
@@ -33,6 +32,7 @@ dev = [
     "matplotlib>=3.11.2",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
+    "xgboost>=3.4.1",
 ]
 
 [tool.ruff]

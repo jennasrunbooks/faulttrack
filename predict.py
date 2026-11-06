@@ -10,9 +10,11 @@ Two answers, kept separate and labeled:
 
 Both metrics are read from ``web/results.json`` at startup, never hardcoded.
 
-``create_app`` loads ``models/model.bin``, ``models/feature_spec.json`` and
-``web/results.json`` once and raises ``RuntimeError`` naming the file if one is
-missing. ``app`` (for ``uvicorn predict:app``) is built on first access, so
+``create_app`` loads ``models/model.bin``, ``models/feature_spec.json``,
+``web/results.json`` and ``web/index.html`` once and raises ``RuntimeError``
+naming the file if one is missing. Only ``/`` (``index.html``) and
+``/results.json`` are served from ``web/``, as two explicit routes: nothing else
+in that directory is reachable. ``app`` (for ``uvicorn predict:app``) is built on first access, so
 importing this module, for example from tests, doesn't need the artifacts.
 """
 
@@ -30,6 +32,7 @@ from typing import Annotated, Any, Literal
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from faulttrack.data import clean_metrics, kind_of, read_metrics
@@ -37,6 +40,7 @@ from faulttrack.features import feature_names, featurize
 
 MODEL_FILE = "model.bin"
 SPEC_FILE = "feature_spec.json"
+INDEX_FILE = "index.html"
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 """Largest accepted ``simple_metrics.csv`` upload."""
 TOP_SIGNALS = 3
@@ -254,10 +258,20 @@ def _fault_block(bundle: Bundle, row: dict[str, float]) -> FaultBlock:
 def create_app(
     model_dir: Path = Path("models"),
     results_path: Path = Path("web/results.json"),
+    web_dir: Path | None = None,
 ) -> FastAPI:
     """Build the API. Loads the artifacts once; raises ``RuntimeError`` naming
-    the file if any is missing, so a broken deploy fails at startup."""
-    bundle = load_bundle(Path(model_dir), Path(results_path))
+    the file if any is missing, so a broken deploy fails at startup.
+
+    ``web_dir`` holds ``index.html`` and defaults to ``results_path``'s folder.
+    """
+    results_path = Path(results_path)
+    index_path = (Path(web_dir) if web_dir is not None else results_path.parent) / (
+        INDEX_FILE
+    )
+    bundle = load_bundle(Path(model_dir), results_path)
+    if not index_path.is_file():
+        raise RuntimeError(f"missing required file: {index_path}")
     app = FastAPI(
         title="FaultTrack",
         version=bundle.model_version,
@@ -269,6 +283,14 @@ def create_app(
             "with its own hit rate)."
         ),
     )
+
+    @app.get("/", include_in_schema=False)
+    def index() -> FileResponse:
+        return FileResponse(index_path, media_type="text/html")
+
+    @app.get("/results.json", include_in_schema=False)
+    def results() -> FileResponse:
+        return FileResponse(results_path, media_type="application/json")
 
     @app.get("/healthz", response_model=Health, summary="Liveness check")
     def healthz() -> Health:

@@ -2,7 +2,9 @@
 # tools, tests, notebook, spike code or raw data (see .dockerignore).
 #
 # python:3.12-slim, multi-arch index digest read 2026-11-06 (arm64 for the Mac,
-# amd64 for Fly.io and CI). Dependabot's docker ecosystem bumps it.
+# amd64 for Fly.io and CI). Dependabot's docker ecosystem bumps it weekly: accept
+# only bumps that stay on Python 3.12 (pyproject.toml requires >=3.12,<3.13) and
+# keep the @sha256 pin. Same for the uv image below.
 FROM python:3.12-slim@sha256:4840d514c583a4d3d8cad3940e68dee6f0f6f3635c12fcd0a3d74c21a5b93a54
 
 # uv 0.13.6, the version the devcontainer uses (multi-arch index digest).

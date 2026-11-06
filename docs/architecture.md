@@ -152,8 +152,8 @@ sequenceDiagram
 `suspect_service` comes from a **rule, not the model**: it's the service with the largest total shift across metric kinds in the detection window. No ML is involved.
 
 **Its accuracy is reported separately from the classifier's:**
-- **Rule:** hit rate, the share of cases where the rule names the injected service. On the go/no-go spike it was 0.853 across the three systems.
-- **Classifier:** macro F1 for the fault type. On the spike it was 0.83 with grouped CV.
+- **Rule:** hit rate, the share of cases where the rule names the injected service. It's 0.900 per alert window on the committed feature table (go/no-go spike: 0.853).
+- **Classifier:** macro F1 for the fault type. The final model scores 0.799 ± 0.028 with grouped 5-fold CV (go/no-go spike: 0.83).
 
 **Where they appear:**
 - **Results files:** `train.py` computes both and writes them to `web/results.json`.

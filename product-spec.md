@@ -166,7 +166,7 @@ These numbers come from the spike scripts (`spike/`), not from tuned final model
 2. **Delay vs. loss isn't the hardest pair within one system** (about 0.89 F1 each). Across systems it's the main confusion (about 30 cases each way).
 3. **Disk faults often lack direct telemetry.** In RE2-OB only 2 of the 5 disk-fault services have `diskio`, so disk stress shows up as memory (page cache) and CPU.
 4. **`error` almost never shifts.** Only a few frontend services expose it, so loss vs. delay relies mostly on latency.
-5. **Generalization gap:** about 0.83 when systems are mixed, but about 0.35 on an unseen system. System size explains only part of it; the rest is domain shift (the same fault has different magnitudes and spread in each system).
+5. **Generalization gap:** about 0.83 when systems are mixed, but about 0.35 on an unseen system (re-measured on the committed feature table: 0.799 and 0.568, PR #25). System size explains only part of it; the rest is domain shift (the same fault has different magnitudes and spread in each system).
 
 ---
 
@@ -189,13 +189,13 @@ Example response:
     "top_signals": ["latency_max", "top_latency_share", "workload_max"],
     "source": "model",
     "model_version": "2026.11.10-rf",
-    "cv_macro_f1": 0.83
+    "cv_macro_f1": 0.799
   },
   "suspect_service": {
     "name": "cartservice",
     "source": "rule",
     "rule": "most anomalous service: the largest total shift across metric kinds in the detection window",
-    "hit_rate": 0.85
+    "hit_rate": 0.9
   }
 }
 ```
@@ -204,8 +204,8 @@ Example response:
 
 | Field | Comes from | Accuracy reported with it |
 |---|---|---|
-| `fault` | **The trained classifier** (`model.bin`) | `cv_macro_f1`: grouped 5-fold CV macro F1 across the 3 systems (go/no-go spike: 0.83) |
-| `suspect_service` | **A rule, not the model:** the most anomalous service. No ML is involved | `hit_rate`: share of RE2 cases where the rule names the injected service (go/no-go spike: 0.853; feature table from #7: 0.900) |
+| `fault` | **The trained classifier** (`model.bin`) | `cv_macro_f1`: grouped 5-fold CV macro F1 across the 3 systems (final model: 0.799 ± 0.028) |
+| `suspect_service` | **A rule, not the model:** the most anomalous service. No ML is involved | `hit_rate`: share of RE2 cases where the rule names the injected service (0.900 per alert window on the committed feature table) |
 
 - **Where the numbers come from:** `train.py` writes both to `web/results.json`, and `predict.py` reads them at startup. They're never hardcoded.
 - **Where it's documented:** the OpenAPI descriptions for these fields (shown at `/docs`) and the README state the same thing, so nobody reads `suspect_service` as an ML prediction.
@@ -352,7 +352,7 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 | 4 | Shared library | `src/faulttrack/data.py` + `features.py` ported from `spike/`; parity test fixture; `make data`, `make features`; committed `re2_features.parquet` | Thu Nov 5 | Done (Nov 4) |
 | 5 | Notebook: prep + EDA | Data prep, quirks, class balance, per-fault signature plots, disk telemetry gap, scaling before/after, system-size table, mutual information + correlation | Sat Nov 7 | Done (Nov 5) |
 | 6 | Notebook: models | Dummy, rule baseline, LR, DT (runbook), RF, XGBoost; grouped CV with tuning; per-class metrics; confusion matrix; ROC AUC; detection-delay curve; final model choice | Mon Nov 9 | Done (Nov 5) |
-| 7 | Generalization analysis | Leave-one-system-out; `--norm-counts`; relative-features experiment (time-boxed to half a day); write-up | Tue Nov 10 | ☐ |
+| 7 | Generalization analysis | Leave-one-system-out; `--norm-counts`; relative-features experiment (time-boxed to half a day); write-up | Tue Nov 10 | Done (Nov 5) |
 | 8 | `train.py` | Trains the final model; writes `models/model.bin`, `feature_spec.json`, `web/results.json` | Tue Nov 10 | ☐ |
 | 9 | `predict.py` + tests | FastAPI `/`, `/predict`, `/predict/case`, `/healthz`; Pydantic models; parity + API smoke tests | Thu Nov 12 | ☐ |
 | 10 | Containerization | CI `docker` job builds the service image when image inputs change (build only, no push); service `Dockerfile` (two steps: `uv sync --frozen --no-dev --no-install-project` for a cached dependency layer, then `COPY src/` + `uv sync --frozen --no-dev` to install the package; `$PORT`); `make docker-build` / `docker-run`; local test on the Mac | Thu Nov 12 | ☐ |

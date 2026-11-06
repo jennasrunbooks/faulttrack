@@ -34,5 +34,5 @@ USER faulttrack
 
 EXPOSE 8080
 
-# Shell form with exec so uvicorn expands $PORT and still receives SIGTERM.
-CMD exec uvicorn predict:app --host 0.0.0.0 --port "$PORT"
+# sh expands $PORT; exec makes uvicorn PID 1 so it receives SIGTERM.
+CMD ["sh", "-c", "exec uvicorn predict:app --host 0.0.0.0 --port \"$PORT\""]

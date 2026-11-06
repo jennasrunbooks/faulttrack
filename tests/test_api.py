@@ -81,6 +81,7 @@ def client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
     results.write_text(
         json.dumps({"fault_cv_macro_f1_mean": CV_F1, "suspect_hit_rate": HIT_RATE})
     )
+    (tmp / "index.html").write_text("<!doctype html><title>test page</title>")
     return TestClient(predict.create_app(tmp, results))
 
 
@@ -337,6 +338,91 @@ def test_results_without_metric_keys_fails_naming_the_key(
     results.write_text(json.dumps({"suspect_hit_rate": 0.5}))
     with pytest.raises(RuntimeError, match="fault_cv_macro_f1_mean"):
         predict.create_app(app_dir, results)
+
+
+def test_missing_index_html_fails_with_its_name(tmp_path: Path) -> None:
+    app_dir = tmp_path / "m"
+    app_dir.mkdir()
+    model = DummyClassifier(strategy="prior").fit(
+        np.zeros((len(CLASSES), len(FEATURE_NAMES))), CLASSES
+    )
+    (app_dir / "model.bin").write_bytes(pickle.dumps(model))
+    (app_dir / "feature_spec.json").write_text(
+        json.dumps(
+            {
+                "feature_names": FEATURE_NAMES,
+                "classes": CLASSES,
+                "baseline_s": BASELINE_S,
+                "post_s": POST_S,
+                "z_floor": Z_FLOOR,
+                "log_z": LOG_Z,
+                "model_version": "t",
+            }
+        )
+    )
+    web = tmp_path / "web"
+    web.mkdir()
+    results = web / "results.json"
+    results.write_text(
+        json.dumps({"fault_cv_macro_f1_mean": CV_F1, "suspect_hit_rate": HIT_RATE})
+    )
+    with pytest.raises(RuntimeError, match=r"index\.html"):
+        predict.create_app(app_dir, results)
+
+
+# ---------- results page ----------
+
+
+def test_index_is_html(client: TestClient) -> None:
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/html")
+    assert "test page" in resp.text
+
+
+def test_results_json_returns_the_fixture_values(client: TestClient) -> None:
+    resp = client.get("/results.json")
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "fault_cv_macro_f1_mean": CV_F1,
+        "suspect_hit_rate": HIT_RATE,
+    }
+
+
+@pytest.mark.parametrize(
+    "path", ["/model.bin", "/feature_spec.json", "/index.html", "/web/", "/nope"]
+)
+def test_nothing_else_is_served(client: TestClient, path: str) -> None:
+    assert client.get(path).status_code == 404
+
+
+def test_web_files_are_not_in_the_openapi_schema(client: TestClient) -> None:
+    paths = set(client.get("/openapi.json").json()["paths"])
+    assert paths == {"/healthz", "/predict", "/predict/case"}
+
+
+# ---------- committed artifacts ----------
+
+
+def test_predict_case_with_committed_artifacts() -> None:
+    """The real model, spec and results.json, paths taken from the repo root."""
+    spec = json.loads((ROOT / "models" / "feature_spec.json").read_text())
+    results = json.loads((ROOT / "web" / "results.json").read_text())
+    app = predict.create_app(ROOT / "models", ROOT / "web" / "results.json")
+    with TestClient(app) as real:
+        assert real.get("/").status_code == 200
+        assert real.get("/results.json").json() == results
+        resp = _fixture_post(real)
+        assert resp.status_code == 200
+        body = resp.json()
+    fault, suspect = body["fault"], body["suspect_service"]
+    assert fault["label"] in spec["classes"]
+    assert fault["source"] == "model"
+    assert fault["cv_macro_f1"] == results["fault_cv_macro_f1_mean"]
+    assert fault["model_version"] == spec["model_version"]
+    assert suspect["source"] == "rule"
+    assert suspect["hit_rate"] == results["suspect_hit_rate"]
+    print("fixture response:", json.dumps(body))  # shown with pytest -s, for the PR
 
 
 def test_import_does_not_build_the_app() -> None:

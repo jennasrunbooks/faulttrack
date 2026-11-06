@@ -12,8 +12,10 @@ It writes, under ``<output_dir>`` (the repo root by default):
 * ``web/results.json``: grouped-CV, leave-one-system-out and root-cause-rule
   figures, the baselines, the runbook tree and sample held-out cases.
 
-Every split and model uses seed 42, so two runs give the same ``results.json``
-apart from ``generated_at``.
+Every split and model uses seed 42, so two runs on the same day give the same
+``results.json`` apart from ``generated_at``. ``model_version`` includes the UTC
+date of the run (``YYYY.MM.DD-rf``), so a run on a later day also changes
+``model_version`` in both ``feature_spec.json`` and ``results.json``.
 """
 
 from __future__ import annotations
@@ -167,8 +169,10 @@ def _runbook_tree() -> DecisionTreeClassifier:
 def _sample_cases(df: pd.DataFrame, cv: CVResult) -> list[dict[str, Any]]:
     """One out-of-fold prediction per fault, at ``delay_s == 0``.
 
-    For each fault, the first ``case_id`` in sorted order, whether the model got
-    it right or not. ``probability`` is the model's probability of the class it
+    Systems rotate so the page isn't one system: for the fault at position ``i``
+    in ``LABELS``, the system at position ``i % 3`` in sorted order, and that
+    system's first ``case_id`` for the fault. The choice never depends on
+    whether the prediction was right. ``probability`` is the model's probability of the class it
     predicted; ``suspect_hit`` says whether the rule named the injected service.
     """
     if cv.y_proba is None:
@@ -184,8 +188,12 @@ def _sample_cases(df: pd.DataFrame, cv: CVResult) -> list[dict[str, Any]]:
         index=cv.index,
     )
     rows: list[dict[str, Any]] = []
-    for fault in LABELS:
-        chosen = oof[(oof["true"] == fault) & (df.loc[oof.index, "delay_s"] == 0)]
+    systems = sorted(set(df["system"].astype(str)))
+    for i, fault in enumerate(LABELS):
+        system = systems[i % len(systems)]
+        at_zero = df.loc[oof.index, "delay_s"] == 0
+        in_system = df.loc[oof.index, "system"].astype(str) == system
+        chosen = oof[(oof["true"] == fault) & at_zero & in_system]
         first = df.loc[chosen.index].sort_values("case_id").index[0]
         rows.append(
             {

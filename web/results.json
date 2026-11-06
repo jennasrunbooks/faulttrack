@@ -2,7 +2,7 @@
   "model_version": "2026.11.06-rf",
   "n_rows": 1350,
   "n_cases": 270,
-  "generated_at": "2026-11-06T00:35:35Z",
+  "generated_at": "2026-11-06T12:47:03Z",
   "fault_cv_macro_f1_mean": 0.7990863963726375,
   "fault_cv_macro_f1_std": 0.028143671710099464,
   "fault_cv_macro_f1_min": 0.7751136978778702,
@@ -183,23 +183,23 @@
       "suspect_hit": true
     },
     {
-      "case_id": "re2ob/checkoutservice_mem/1",
-      "system": "re2ob",
+      "case_id": "re2ss/carts_mem/1",
+      "system": "re2ss",
       "true_fault": "mem",
       "predicted_fault": "mem",
-      "probability": 0.6011428571428572,
-      "suspect_service": "checkoutservice",
-      "injected_service": "checkoutservice",
+      "probability": 0.91175,
+      "suspect_service": "carts",
+      "injected_service": "carts",
       "suspect_hit": true
     },
     {
-      "case_id": "re2ob/checkoutservice_disk/1",
-      "system": "re2ob",
+      "case_id": "re2tt/ts-auth-service_disk/1",
+      "system": "re2tt",
       "true_fault": "disk",
       "predicted_fault": "disk",
-      "probability": 0.7088095238095238,
-      "suspect_service": "checkoutservice",
-      "injected_service": "checkoutservice",
+      "probability": 0.7895833333333333,
+      "suspect_service": "ts-auth-service",
+      "injected_service": "ts-auth-service",
       "suspect_hit": true
     },
     {
@@ -213,24 +213,24 @@
       "suspect_hit": true
     },
     {
-      "case_id": "re2ob/checkoutservice_delay/1",
-      "system": "re2ob",
+      "case_id": "re2ss/carts_delay/1",
+      "system": "re2ss",
       "true_fault": "delay",
       "predicted_fault": "delay",
-      "probability": 0.90875,
-      "suspect_service": "emailservice",
-      "injected_service": "checkoutservice",
-      "suspect_hit": false
+      "probability": 0.63625,
+      "suspect_service": "carts",
+      "injected_service": "carts",
+      "suspect_hit": true
     },
     {
-      "case_id": "re2ob/checkoutservice_loss/1",
-      "system": "re2ob",
+      "case_id": "re2tt/ts-auth-service_loss/1",
+      "system": "re2tt",
       "true_fault": "loss",
-      "predicted_fault": "loss",
-      "probability": 0.5773333333333336,
-      "suspect_service": "checkoutservice",
-      "injected_service": "checkoutservice",
-      "suspect_hit": true
+      "predicted_fault": "cpu",
+      "probability": 0.8920714285714285,
+      "suspect_service": "ts-basic-service",
+      "injected_service": "ts-auth-service",
+      "suspect_hit": false
     }
   ]
 }

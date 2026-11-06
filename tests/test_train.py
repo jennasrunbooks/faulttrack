@@ -127,3 +127,9 @@ def test_two_runs_give_the_same_results(
     first = {k: v for k, v in first.items() if k != "generated_at"}
     second = {k: v for k, v in second.items() if k != "generated_at"}
     assert first == json.loads(json.dumps(second))
+
+
+def test_sample_cases_rotate_through_all_systems(trained: tuple[Path, dict]) -> None:
+    _, results = trained
+    systems = [c["system"] for c in results["sample_cases"]]
+    assert systems == ["re2ob", "re2ss", "re2tt"] * 2

@@ -155,11 +155,20 @@ The response has two separately labeled answers (shape shown; values come from t
 ## Docker
 
 ```bash
-docker build -t faulttrack .
-docker run --rm -p 8080:8080 faulttrack
+docker build -t faulttrack .        # or: make docker-build
+docker run --rm -p 8080:8080 faulttrack   # or: make docker-run
 ```
 
-Then use the same `curl` commands, or open http://localhost:8080/docs.
+The image holds the runtime dependencies, `src/`, `predict.py`, `models/` and `web/` only, and runs as a non-root user. It listens on `$PORT` (default 8080). Check it with the same `curl` commands as above:
+
+```bash
+curl -s localhost:8080/healthz
+curl -s -F file=@tests/fixtures/simple_metrics.csv \
+     -F detection_time="$(cat tests/fixtures/inject_time.txt)" \
+     localhost:8080/predict/case
+```
+
+Or open http://localhost:8080/docs.
 
 ## Deploy
 

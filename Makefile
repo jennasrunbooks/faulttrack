@@ -33,10 +33,10 @@ serve: ## Serve the API locally on port 8080 (plan line 9)
 	uv run uvicorn predict:app --port 8080
 
 docker-build: ## Build the service image; host only (plan line 10)
-	@echo "make docker-build: not implemented yet (plan line 10)" >&2; exit 1
+	docker build -t faulttrack .
 
 docker-run: ## Run the service image; host only (plan line 10)
-	@echo "make docker-run: not implemented yet (plan line 10)" >&2; exit 1
+	docker run --rm -p 8080:8080 faulttrack
 
 deploy: ## Deploy to Fly.io; maintainer only (plan line 11)
 	@echo "make deploy: not implemented yet (plan line 11)" >&2; exit 1

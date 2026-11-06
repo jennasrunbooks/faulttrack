@@ -109,6 +109,8 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 
 **Decision (Jenna, 2026-11-06):** the headline stays grouped CV; the README's first Results sentence gives the LOSO number next to it. The 0.45 rule from 2026-11-03 is retired.
 
+**Why the rule was retired rather than applied:** it was set before these results, so the reason is recorded here. LOSO is a mean over only 3 systems, from 0.407 (TT) to 0.655 (std 0.114, against 0.028 across the 5 grouped-CV folds), which is too unstable for the single headline. It also answers a different question: the API's `cv_macro_f1` describes fault type on systems like those the model was trained on, and for a new system the README says to retrain on that cluster's labeled incidents. LOSO isn't hidden: it's in the README's first Results sentence and next to the headline on the results page.
+
 ## 2026-11-05: `--norm-counts` gives a small LOSO gain; not adopted (plan line 7)
 
 **Experiment:** replace `<kind>_abssum` and `<kind>_n_gt3` with `<kind>_absmean` and `<kind>_frac_gt3` (divided by `max(n_services_<kind>, 1)`), rebuilt in memory from the committed table and checked against `featurize(norm_counts=True)` on the fixture case. Notebook section 8.3.

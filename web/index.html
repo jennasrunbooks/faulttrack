@@ -54,6 +54,7 @@
   th, td { border: 1px solid var(--line); padding: .3rem .5rem; text-align: right; }
   th:first-child, td:first-child { text-align: left; }
   thead th { background: var(--card); }
+  .case { word-break: break-all; min-width: 8rem; }
   td.hit { color: var(--hit); font-weight: 600; }
   td.miss { color: var(--miss); font-weight: 600; }
   pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .75rem; overflow-x: auto; font-size: .85rem; }
@@ -117,7 +118,7 @@
         <tbody></tbody>
       </table>
     </div>
-    <p>Confusion matrix: rows are the true fault, columns the predicted one. Darker cells hold more windows, and every cell shows its count.</p>
+    <p>Confusion matrix: rows are the true fault, columns the predicted one. Shaded cells hold more windows, and every cell shows its count.</p>
     <div class="scroll">
       <div class="axis">predicted</div>
       <table id="confusion">
@@ -155,13 +156,13 @@
 
   <section>
     <h2>Sample held-out cases</h2>
-    <p>A few cases from the held-out folds. The misses are kept. The fault columns come from the model, the suspect-service columns from the rule.</p>
+    <p>A few cases from the held-out folds. The misses are kept. The Model column marks the fault type (from the model); the Rule column marks the suspect service (from the rule).</p>
     <div class="scroll">
       <table id="samples">
         <caption class="muted" style="text-align:left">Sample cases: model fault and rule suspect service</caption>
         <thead><tr>
-          <th scope="col">Case</th><th scope="col">True fault</th><th scope="col">Model says</th><th scope="col">Probability</th>
-          <th scope="col">Injected service</th><th scope="col">Rule suspects</th><th scope="col">Suspect</th>
+          <th scope="col" class="case">Case</th><th scope="col">True fault</th><th scope="col">Model says</th><th scope="col">Probability</th><th scope="col">Model</th>
+          <th scope="col">Injected service</th><th scope="col">Rule suspects</th><th scope="col">Rule</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -299,18 +300,20 @@ function render(r) {
     "trained on: each test fold has other cases of those systems in its training data. On a system it " +
     "has never seen, the score is lower (" + pm(r.loso) + "), and the std comes from only three " +
     "values. The weakest held-out system is " + weakest(r.loso.macro_f1, SYSTEM_NAMES) + ". " +
-    "Treat the fault label as a hint within its group, and retrain with labeled incidents from the " +
+    "Treat the fault label as a hint at whether it is a resource fault (cpu, mem, disk, socket) or a network fault (delay, loss), and retrain with labeled incidents from the " +
     "new cluster before relying on it. The suspect service comes from a rule with no training, so " +
     "this gap does not apply to it (hit rate " +
-    Object.keys(hits).map(function (k) { return fmt(hits[k]); }).join(", ") + " per system).";
+    Object.keys(hits).map(function (k) { return (SYSTEM_NAMES[k] || k) + " " + fmt(hits[k]); }).join(", ") + ").";
 
   const sm = document.querySelector("#samples tbody");
   r.sample_cases.forEach(function (c) {
     addRow(sm, [
-      cell("th", c.case_id, { scope: "row" }),
+      cell("th", c.case_id, { scope: "row", className: "case" }),
       cell("td", c.true_fault),
       cell("td", c.predicted_fault),
       cell("td", fmt(c.probability)),
+      cell("td", c.predicted_fault === c.true_fault ? "hit" : "miss",
+        { className: c.predicted_fault === c.true_fault ? "hit" : "miss" }),
       cell("td", c.injected_service),
       cell("td", c.suspect_service),
       cell("td", c.suspect_hit ? "hit" : "miss", { className: c.suspect_hit ? "hit" : "miss" }),

@@ -3,20 +3,346 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FaultTrack</title>
+<meta name="color-scheme" content="light dark">
+<title>FaultTrack results</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; color: #1a1a1a; }
-  a { color: #0b5cad; }
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #55606b;
+    --line: #d5dae0;
+    --card: #f4f6f8;
+    --accent: #2f6fd0;
+    --link: #0b5cad;
+    --hit: #1d7a3a;
+    --miss: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a;
+      --fg: #e8eaed;
+      --muted: #a2adb8;
+      --line: #333a41;
+      --card: #1e2328;
+      --accent: #5b9bff;
+      --link: #8ab8ff;
+      --hit: #5fcf80;
+      --miss: #ff8a80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.5 system-ui, sans-serif;
+  }
+  main, header, footer { max-width: 56rem; margin: 0 auto; padding: 0 1rem; }
+  header { padding-top: 2rem; }
+  h1 { margin: 0 0 .25rem; font-size: 1.8rem; }
+  h2 { margin: 2.25rem 0 .5rem; font-size: 1.3rem; }
+  p { margin: .5rem 0; }
+  a { color: var(--link); }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .cards { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .75rem 1rem; }
+  .card .label { color: var(--muted); font-size: .85rem; }
+  .card .value { font-size: 1.6rem; font-weight: 600; }
+  .card .detail { font-size: .85rem; color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { border: 1px solid var(--line); padding: .3rem .5rem; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { background: var(--card); }
+  td.hit { color: var(--hit); font-weight: 600; }
+  td.miss { color: var(--miss); font-weight: 600; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .75rem; overflow-x: auto; font-size: .85rem; }
+  .axis { text-align: center; color: var(--muted); font-size: .85rem; margin: .25rem 0; }
+  #error { color: var(--miss); font-weight: 600; }
+  footer { padding-top: 1.5rem; padding-bottom: 3rem; border-top: 1px solid var(--line); margin-top: 3rem; }
+  @media (max-width: 30rem) {
+    h1 { font-size: 1.5rem; }
+    th, td { padding: .25rem .35rem; font-size: .9rem; }
+  }
 </style>
 </head>
 <body>
-<h1>FaultTrack</h1>
-<p>FaultTrack reads the per-service Prometheus metrics around an alert and predicts which kind of fault it is (cpu, mem, disk, socket, delay or loss). It also names the service where the fault most likely started, using a separate rule.</p>
-<ul>
-  <li><a href="/docs">API documentation (Swagger UI)</a></li>
-  <li><a href="https://github.com/jennasrunbooks/faulttrack">Source code on GitHub</a></li>
-</ul>
-<p>The full results page is coming with plan line 12. Until then, the raw numbers are at <a href="/results.json">/results.json</a>.</p>
-<p>Data: RCAEval RE2 (Pham et al., CC BY 4.0, <a href="https://doi.org/10.5281/zenodo.14590730">doi:10.5281/zenodo.14590730</a>).</p>
+<header>
+  <h1>FaultTrack</h1>
+  <p>FaultTrack reads the per-service Prometheus metrics around an alert, predicts which kind of fault it is (cpu, mem, disk, socket, delay or loss), and names the service where the fault most likely started with a separate rule.</p>
+  <p class="muted">
+    Model <span id="model-version">…</span> · generated <span id="generated-at">…</span> ·
+    <a href="/docs">API docs (Swagger UI)</a> ·
+    <a href="https://github.com/jennasrunbooks/faulttrack">source on GitHub</a>
+  </p>
+  <p id="error" role="alert"></p>
+</header>
+
+<main id="content" hidden>
+  <section id="headline">
+    <h2>Headline</h2>
+    <p>Fault-type macro F1 on grouped 5-fold cross-validation across all three systems, grouped by case so that windows of one case never sit in both train and test. Mean ± std across folds, with min–max.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="label">Fault type, macro F1 (model)</div>
+        <div class="value" id="f1-main"></div>
+        <div class="detail" id="f1-range"></div>
+        <div class="detail" id="f1-base"></div>
+      </div>
+      <div class="card">
+        <div class="label">Fault type on an unseen system (leave-one-system-out)</div>
+        <div class="value" id="loso-main"></div>
+        <div class="detail">Mean ± std across 3 held-out systems. <a href="#generalizing">Details below</a>.</div>
+      </div>
+      <div class="card">
+        <div class="label">One-vs-rest ROC AUC (model)</div>
+        <div class="value" id="auc"></div>
+        <div class="detail" id="acc"></div>
+      </div>
+      <div class="card">
+        <div class="label">Suspect-service hit rate (rule, not the model)</div>
+        <div class="value" id="hit"></div>
+        <div class="detail">Share of windows where the most-anomalous service is the injected one. No training involved.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Per-class results</h2>
+    <p>Precision, recall and F1 for each fault type, pooled over the held-out folds of the grouped cross-validation.</p>
+    <div class="scroll">
+      <table id="per-class">
+        <caption class="muted" style="text-align:left">Per-class metrics (model)</caption>
+        <thead><tr><th scope="col">Fault</th><th scope="col">Precision</th><th scope="col">Recall</th><th scope="col">F1</th><th scope="col">Rows</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p>Confusion matrix: rows are the true fault, columns the predicted one. Darker cells hold more windows, and every cell shows its count.</p>
+    <div class="scroll">
+      <div class="axis">predicted</div>
+      <table id="confusion">
+        <caption class="muted" style="text-align:left">Confusion matrix (counts of windows), true fault by predicted fault</caption>
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Detection delay</h2>
+    <p>Macro F1 when the model sees only the first seconds of metrics after the alert. Mean ± std across folds, with min–max.</p>
+    <div class="scroll">
+      <table id="delay">
+        <caption class="muted" style="text-align:left">Macro F1 by seconds of data after the alert</caption>
+        <thead><tr><th scope="col">Seconds</th><th scope="col">Macro F1</th><th scope="col">Min–max</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="generalizing">
+    <h2>Generalizing to an unseen system</h2>
+    <p>Leave-one-system-out trains on two of the RCAEval RE2 systems and tests on the third. This is the situation of a team running FaultTrack on its own cluster.</p>
+    <div class="scroll">
+      <table id="loso">
+        <caption class="muted" style="text-align:left">Macro F1 with one system held out</caption>
+        <thead><tr><th scope="col">Held-out system</th><th scope="col">Macro F1</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p id="loso-limit"></p>
+  </section>
+
+  <section>
+    <h2>Sample held-out cases</h2>
+    <p>A few cases from the held-out folds. The misses are kept. The fault columns come from the model, the suspect-service columns from the rule.</p>
+    <div class="scroll">
+      <table id="samples">
+        <caption class="muted" style="text-align:left">Sample cases: model fault and rule suspect service</caption>
+        <thead><tr>
+          <th scope="col">Case</th><th scope="col">True fault</th><th scope="col">Model says</th><th scope="col">Probability</th>
+          <th scope="col">Injected service</th><th scope="col">Rule suspects</th><th scope="col">Suspect</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Runbook tree</h2>
+    <p id="tree-intro"></p>
+    <pre id="tree"></pre>
+  </section>
+</main>
+
+<footer>
+  <p>Data: RCAEval RE2, Pham et al., licensed CC BY 4.0, <a href="https://doi.org/10.5281/zenodo.14590730">doi:10.5281/zenodo.14590730</a>. Code: Apache-2.0.</p>
+  <p class="muted">Every number on this page is read from <a href="results.json">results.json</a>.</p>
+</footer>
+
+<script>
+"use strict";
+// Top-level keys of results.json that this page reads. tests/test_web.py checks
+// that each one exists in the committed web/results.json.
+const KEYS = [
+  "model_version",
+  "generated_at",
+  "fault_cv_macro_f1_mean",
+  "fault_cv_macro_f1_std",
+  "fault_cv_macro_f1_min",
+  "fault_cv_macro_f1_max",
+  "fault_cv_accuracy_mean",
+  "fault_cv_roc_auc_ovr",
+  "per_class",
+  "classes",
+  "confusion_matrix",
+  "f1_by_delay",
+  "baselines",
+  "loso",
+  "suspect_hit_rate",
+  "suspect_hit_rate_by_system",
+  "runbook_tree",
+  "runbook_tree_cv_macro_f1",
+  "sample_cases",
+];
+
+const SYSTEM_NAMES = {
+  re2ob: "Online Boutique (re2ob)",
+  re2ss: "Sock Shop (re2ss)",
+  re2tt: "Train Ticket (re2tt)",
+};
+
+function fmt(x) { return Number(x).toFixed(3); }
+function pm(m) { return fmt(m.mean) + " ± " + fmt(m.std); }
+function range(m) { return fmt(m.min) + "–" + fmt(m.max); }
+function $(id) { return document.getElementById(id); }
+
+function cell(tag, text, opts) {
+  const c = document.createElement(tag);
+  c.textContent = text;
+  if (opts && opts.scope) c.scope = opts.scope;
+  if (opts && opts.className) c.className = opts.className;
+  return c;
+}
+
+function addRow(tbody, cells) {
+  const tr = document.createElement("tr");
+  cells.forEach(function (c) { tr.appendChild(c); });
+  tbody.appendChild(tr);
+}
+
+function render(r) {
+  $("model-version").textContent = r.model_version;
+  $("generated-at").textContent = r.generated_at;
+
+  const f1 = {
+    mean: r.fault_cv_macro_f1_mean, std: r.fault_cv_macro_f1_std,
+    min: r.fault_cv_macro_f1_min, max: r.fault_cv_macro_f1_max,
+  };
+  $("f1-main").textContent = pm(f1);
+  $("f1-range").textContent = "min–max across folds: " + range(f1);
+  $("f1-base").textContent =
+    "Dummy " + pm(r.baselines.dummy) + " · biggest-shift rule " + pm(r.baselines.rule);
+  $("loso-main").textContent = pm(r.loso);
+  $("auc").textContent = fmt(r.fault_cv_roc_auc_ovr);
+  $("acc").textContent = "Accuracy (mean over folds): " + fmt(r.fault_cv_accuracy_mean);
+  $("hit").textContent = fmt(r.suspect_hit_rate);
+
+  const pc = document.querySelector("#per-class tbody");
+  r.classes.forEach(function (name) {
+    const m = r.per_class[name];
+    addRow(pc, [
+      cell("th", name, { scope: "row" }),
+      cell("td", fmt(m.precision)), cell("td", fmt(m.recall)),
+      cell("td", fmt(m.f1)), cell("td", String(m.support)),
+    ]);
+  });
+
+  const head = document.createElement("tr");
+  head.appendChild(cell("th", "true \\ predicted", { scope: "col" }));
+  r.classes.forEach(function (name) { head.appendChild(cell("th", name, { scope: "col" })); });
+  document.querySelector("#confusion thead").appendChild(head);
+  const peak = Math.max.apply(null, r.confusion_matrix.map(function (row) {
+    return Math.max.apply(null, row);
+  }));
+  const body = document.querySelector("#confusion tbody");
+  r.confusion_matrix.forEach(function (row, i) {
+    const cells = [cell("th", r.classes[i], { scope: "row" })];
+    row.forEach(function (n) {
+      const td = cell("td", String(n));
+      const pct = Math.round(45 * n / peak);
+      td.style.background = "color-mix(in srgb, var(--accent) " + pct + "%, transparent)";
+      cells.push(td);
+    });
+    addRow(body, cells);
+  });
+
+  const dl = document.querySelector("#delay tbody");
+  Object.keys(r.f1_by_delay)
+    .sort(function (a, b) { return Number(a) - Number(b); })
+    .forEach(function (s) {
+      const m = r.f1_by_delay[s];
+      addRow(dl, [cell("th", s + " s", { scope: "row" }), cell("td", pm(m)), cell("td", range(m))]);
+    });
+
+  const lo = document.querySelector("#loso tbody");
+  Object.keys(r.loso.macro_f1).forEach(function (k) {
+    addRow(lo, [
+      cell("th", SYSTEM_NAMES[k] || k, { scope: "row" }),
+      cell("td", fmt(r.loso.macro_f1[k])),
+    ]);
+  });
+  addRow(lo, [cell("th", "Mean ± std across 3 systems", { scope: "row" }), cell("td", pm(r.loso))]);
+  const hits = r.suspect_hit_rate_by_system;
+  $("loso-limit").textContent =
+    "The headline score (" + pm(f1) + ") is measured on the same three systems the model was " +
+    "trained on: each test fold has other cases of those systems in its training data. On a system it " +
+    "has never seen, the score is lower (" + pm(r.loso) + "), and the std comes from only three " +
+    "values. The weakest held-out system is " + weakest(r.loso.macro_f1, SYSTEM_NAMES) + ". " +
+    "Treat the fault label as a hint within its group, and retrain with labeled incidents from the " +
+    "new cluster before relying on it. The suspect service comes from a rule with no training, so " +
+    "this gap does not apply to it (hit rate " +
+    Object.keys(hits).map(function (k) { return fmt(hits[k]); }).join(", ") + " per system).";
+
+  const sm = document.querySelector("#samples tbody");
+  r.sample_cases.forEach(function (c) {
+    addRow(sm, [
+      cell("th", c.case_id, { scope: "row" }),
+      cell("td", c.true_fault),
+      cell("td", c.predicted_fault),
+      cell("td", fmt(c.probability)),
+      cell("td", c.injected_service),
+      cell("td", c.suspect_service),
+      cell("td", c.suspect_hit ? "hit" : "miss", { className: c.suspect_hit ? "hit" : "miss" }),
+    ]);
+  });
+
+  $("tree-intro").textContent =
+    "A shallow decision tree, shown as an illustration of how a runbook could read. It is not the " +
+    "deployed model. Its own grouped-CV macro F1 is " + pm(r.runbook_tree_cv_macro_f1) +
+    ", against " + pm(f1) + " for the deployed random forest.";
+  $("tree").textContent = r.runbook_tree;
+}
+
+function weakest(byKey, names) {
+  const k = Object.keys(byKey).reduce(function (a, b) { return byKey[a] <= byKey[b] ? a : b; });
+  return (names[k] || k) + " (" + fmt(byKey[k]) + ")";
+}
+
+fetch("results.json")
+  .then(function (resp) {
+    if (!resp.ok) throw new Error("results.json: HTTP " + resp.status);
+    return resp.json();
+  })
+  .then(function (r) {
+    const missing = KEYS.filter(function (k) { return !(k in r); });
+    if (missing.length) throw new Error("results.json is missing: " + missing.join(", "));
+    render(r);
+    $("content").hidden = false;
+  })
+  .catch(function (err) {
+    $("error").textContent = "Could not load the results: " + err.message;
+  });
+</script>
 </body>
 </html>

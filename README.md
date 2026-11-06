@@ -174,7 +174,7 @@ Or open http://localhost:8080/docs.
 
 FaultTrack runs on [Fly.io](https://fly.io) as one small machine that stops when idle. The first request after a quiet period takes a few seconds.
 
-**Configuration:** [`fly.toml`](fly.toml). **Commands:** _TBD (plan line 11)._
+**Configuration:** [`fly.toml`](fly.toml). **Commands:** `make deploy` (maintainer, from the host).
 
 ```bash
 fly launch --no-deploy        # first time only: creates the app from fly.toml

@@ -39,4 +39,4 @@ docker-run: ## Run the service image; host only (plan line 10)
 	docker run --rm -p 8080:8080 faulttrack
 
 deploy: ## Deploy to Fly.io; maintainer only (plan line 11)
-	@echo "make deploy: not implemented yet (plan line 11)" >&2; exit 1
+	fly deploy

@@ -1,0 +1,236 @@
+{
+  "model_version": "2026.11.06-rf",
+  "n_rows": 1350,
+  "n_cases": 270,
+  "generated_at": "2026-11-06T12:47:03Z",
+  "fault_cv_macro_f1_mean": 0.7990863963726375,
+  "fault_cv_macro_f1_std": 0.028143671710099464,
+  "fault_cv_macro_f1_min": 0.7751136978778702,
+  "fault_cv_macro_f1_max": 0.8497856027119859,
+  "fault_cv_accuracy_mean": 0.8074074074074072,
+  "fault_cv_roc_auc_ovr": 0.9738808230452675,
+  "per_class": {
+    "cpu": {
+      "precision": 0.7613168724279835,
+      "recall": 0.8222222222222222,
+      "f1": 0.7905982905982906,
+      "support": 225
+    },
+    "mem": {
+      "precision": 0.9155555555555556,
+      "recall": 0.9155555555555556,
+      "f1": 0.9155555555555556,
+      "support": 225
+    },
+    "disk": {
+      "precision": 0.9611650485436893,
+      "recall": 0.88,
+      "f1": 0.9187935034802784,
+      "support": 225
+    },
+    "socket": {
+      "precision": 0.75,
+      "recall": 0.76,
+      "f1": 0.7549668874172185,
+      "support": 225
+    },
+    "delay": {
+      "precision": 0.755656108597285,
+      "recall": 0.7422222222222222,
+      "f1": 0.7488789237668162,
+      "support": 225
+    },
+    "loss": {
+      "precision": 0.7180616740088106,
+      "recall": 0.7244444444444444,
+      "f1": 0.7212389380530974,
+      "support": 225
+    }
+  },
+  "classes": [
+    "cpu",
+    "mem",
+    "disk",
+    "socket",
+    "delay",
+    "loss"
+  ],
+  "confusion_matrix": [
+    [
+      185,
+      0,
+      0,
+      40,
+      0,
+      0
+    ],
+    [
+      2,
+      206,
+      8,
+      8,
+      0,
+      1
+    ],
+    [
+      2,
+      18,
+      198,
+      6,
+      0,
+      1
+    ],
+    [
+      47,
+      1,
+      0,
+      171,
+      0,
+      6
+    ],
+    [
+      2,
+      0,
+      0,
+      0,
+      167,
+      56
+    ],
+    [
+      5,
+      0,
+      0,
+      3,
+      54,
+      163
+    ]
+  ],
+  "f1_by_delay": {
+    "0": {
+      "mean": 0.7872833869498518,
+      "std": 0.04928318299293705,
+      "min": 0.7456930415263748,
+      "max": 0.8571207430340556
+    },
+    "30": {
+      "mean": 0.7967648386483938,
+      "std": 0.05064438852527164,
+      "min": 0.7439216728690413,
+      "max": 0.8931560654538174
+    },
+    "60": {
+      "mean": 0.8048003019237949,
+      "std": 0.05318113670249279,
+      "min": 0.7271391394086238,
+      "max": 0.8931560654538174
+    },
+    "90": {
+      "mean": 0.79688407644032,
+      "std": 0.023296908535855552,
+      "min": 0.7710798460798461,
+      "max": 0.8395590692417318
+    },
+    "120": {
+      "mean": 0.8059987478039012,
+      "std": 0.03404097427322921,
+      "min": 0.7771600718969139,
+      "max": 0.8701963241436926
+    }
+  },
+  "baselines": {
+    "dummy": {
+      "mean": 0.030282485875706217,
+      "std": 0.002491006518084588,
+      "min": 0.02824858757062147,
+      "max": 0.03333333333333333
+    },
+    "rule": {
+      "mean": 0.27699892927588754,
+      "std": 0.037621902132066946,
+      "min": 0.21199121992714565,
+      "max": 0.31776468826999477
+    }
+  },
+  "loso": {
+    "macro_f1": {
+      "re2ob": 0.6547649299747839,
+      "re2ss": 0.6431406050839249,
+      "re2tt": 0.4073879011842901
+    },
+    "mean": 0.5684311454143329,
+    "std": 0.11397361132120301
+  },
+  "suspect_hit_rate": 0.9,
+  "suspect_hit_rate_by_system": {
+    "re2ob": 0.88,
+    "re2ss": 0.9733333333333334,
+    "re2tt": 0.8466666666666667
+  },
+  "runbook_tree": "|--- top_cpu <= 1.74\n|   |--- mem_max <= 2.24\n|   |   |--- latency_2nd <= 5.45\n|   |   |   |--- class: loss\n|   |   |--- latency_2nd >  5.45\n|   |   |   |--- class: delay\n|   |--- mem_max >  2.24\n|   |   |--- top_latency_share <= 0.17\n|   |   |   |--- class: socket\n|   |   |--- top_latency_share >  0.17\n|   |   |   |--- class: loss\n|--- top_cpu >  1.74\n|   |--- mem_max <= 4.57\n|   |   |--- top_socket <= 1.13\n|   |   |   |--- class: cpu\n|   |   |--- top_socket >  1.13\n|   |   |   |--- class: socket\n|   |--- mem_max >  4.57\n|   |   |--- top_diskio_share <= 0.03\n|   |   |   |--- class: mem\n|   |   |--- top_diskio_share >  0.03\n|   |   |   |--- class: disk\n",
+  "runbook_tree_cv_macro_f1": {
+    "mean": 0.5702876951476135,
+    "std": 0.06745963451569754
+  },
+  "sample_cases": [
+    {
+      "case_id": "re2ob/checkoutservice_cpu/1",
+      "system": "re2ob",
+      "true_fault": "cpu",
+      "predicted_fault": "cpu",
+      "probability": 0.4928333333333333,
+      "suspect_service": "checkoutservice",
+      "injected_service": "checkoutservice",
+      "suspect_hit": true
+    },
+    {
+      "case_id": "re2ss/carts_mem/1",
+      "system": "re2ss",
+      "true_fault": "mem",
+      "predicted_fault": "mem",
+      "probability": 0.91175,
+      "suspect_service": "carts",
+      "injected_service": "carts",
+      "suspect_hit": true
+    },
+    {
+      "case_id": "re2tt/ts-auth-service_disk/1",
+      "system": "re2tt",
+      "true_fault": "disk",
+      "predicted_fault": "disk",
+      "probability": 0.7895833333333333,
+      "suspect_service": "ts-auth-service",
+      "injected_service": "ts-auth-service",
+      "suspect_hit": true
+    },
+    {
+      "case_id": "re2ob/checkoutservice_socket/1",
+      "system": "re2ob",
+      "true_fault": "socket",
+      "predicted_fault": "socket",
+      "probability": 0.7539999999999999,
+      "suspect_service": "checkoutservice",
+      "injected_service": "checkoutservice",
+      "suspect_hit": true
+    },
+    {
+      "case_id": "re2ss/carts_delay/1",
+      "system": "re2ss",
+      "true_fault": "delay",
+      "predicted_fault": "delay",
+      "probability": 0.63625,
+      "suspect_service": "carts",
+      "injected_service": "carts",
+      "suspect_hit": true
+    },
+    {
+      "case_id": "re2tt/ts-auth-service_loss/1",
+      "system": "re2tt",
+      "true_fault": "loss",
+      "predicted_fault": "cpu",
+      "probability": 0.8920714285714285,
+      "suspect_service": "ts-basic-service",
+      "injected_service": "ts-auth-service",
+      "suspect_hit": false
+    }
+  ]
+}

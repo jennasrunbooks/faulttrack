@@ -107,6 +107,8 @@ Design and evaluation decisions, newest last. Each entry says what was decided, 
 
 **What it changes:** nothing in the code. The 2026-11-03 entry set a 0.45 LOSO threshold for making LOSO the headline, and 0.568 is now above it. **The headline stays grouped CV pending Jenna's decision** (issue #17 hand-off; the default is no change). The README limitation text is at the end of notebook section 8.5.
 
+**Decision (Jenna, 2026-11-06):** the headline stays grouped CV; the README's first Results sentence gives the LOSO number next to it. The 0.45 rule from 2026-11-03 is retired.
+
 ## 2026-11-05: `--norm-counts` gives a small LOSO gain; not adopted (plan line 7)
 
 **Experiment:** replace `<kind>_abssum` and `<kind>_n_gt3` with `<kind>_absmean` and `<kind>_frac_gt3` (divided by `max(n_services_<kind>, 1)`), rebuilt in memory from the committed table and checked against `featurize(norm_counts=True)` on the fixture case. Notebook section 8.3.

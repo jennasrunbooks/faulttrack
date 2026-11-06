@@ -27,7 +27,7 @@ features: ## Rebuild data/features/re2_features.parquet + re2_inventory.parquet 
 	uv run python -m faulttrack.build
 
 train: ## Train the final model into models/ and web/results.json (plan line 8)
-	@echo "make train: not implemented yet (plan line 8)" >&2; exit 1
+	uv run python train.py
 
 serve: ## Serve the API locally on port 8080 (plan line 9)
 	uv run uvicorn predict:app --port 8080

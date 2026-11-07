@@ -85,6 +85,7 @@ models/                    # model.bin + feature_spec.json (committed, small)
 web/                       # static results page served at /
 tests/                     # parity, API smoke, unit; tests/fixtures/ holds one small real case
 spike/                     # go/no-go scripts; exploratory, not graded; excluded from ruff + typecheck; don't import from here
+scripts/gh/                # maintainer-run gh scripts (labels, milestone, issues); agents don't run them
 docs/                      # architecture.md, permissions.md, agent-team.md, decisions.md, images/, proposed-workflows/
 .devcontainer/  Dockerfile  fly.toml  .github/
 ```

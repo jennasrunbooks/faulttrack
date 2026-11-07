@@ -166,7 +166,7 @@ These numbers come from the spike scripts (`spike/`), not from tuned final model
 2. **Delay vs. loss isn't the hardest pair within one system** (about 0.89 F1 each). Across systems it's the main confusion (about 30 cases each way).
 3. **Disk faults often lack direct telemetry.** In RE2-OB only 2 of the 5 disk-fault services have `diskio`, so disk stress shows up as memory (page cache) and CPU.
 4. **`error` almost never shifts.** Only a few frontend services expose it, so loss vs. delay relies mostly on latency.
-5. **Generalization gap:** about 0.83 when systems are mixed, but about 0.35 on an unseen system (re-measured on the committed feature table: 0.799 and 0.568, PR #25). System size explains only part of it; the rest is domain shift (the same fault has different magnitudes and spread in each system).
+5. **Generalization gap:** 0.799 when systems are mixed (grouped CV), but 0.568 on an unseen system (leave-one-system-out, PR #25; the go/no-go spike measured about 0.83 and 0.35). System size explains only part of it; the rest is domain shift (the same fault has different magnitudes and spread in each system).
 
 ---
 

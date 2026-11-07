@@ -28,7 +28,7 @@ git checkout midterm-submission
 | Clone and run the notebook, `train.py` and `predict.py` locally | Python 3.12 + [uv](https://docs.astral.sh/uv/getting-started/installation/) (uv installs Python 3.12 itself if needed) | about 20 min |
 | Build and run the Docker image | Docker | about 10 min extra |
 
-**Cold start:** the live API scales to zero, so the first request after a quiet period takes a few seconds.
+**Cold start:** the live API scales to zero, so the first request after a quiet period takes about 10 seconds.
 
 ## Review paths
 
@@ -43,7 +43,7 @@ git checkout midterm-submission
 
 1. **Problem and results:** read [README.md](README.md), especially "Problem", "Results" and "Generalizing to an unseen system".
 2. **Notebook:** open [notebook.ipynb](notebook.ipynb) on GitHub. It's committed with outputs, so it renders without running.
-3. **Live API:** open https://faulttrack.jennasrunbooks.com/docs and use **Try it out** on `POST /predict/case`. Upload [tests/fixtures/simple_metrics.csv](tests/fixtures/), and set `detection_time` to the number in [tests/fixtures/inject_time.txt](tests/fixtures/inject_time.txt). [tests/fixtures/README.md](tests/fixtures/README.md) names the case's true fault, so you can check the answer.
+3. **Live API:** open https://faulttrack.jennasrunbooks.com/docs and use **Try it out** on `POST /predict/case`. Upload [tests/fixtures/simple_metrics.csv](tests/fixtures/simple_metrics.csv) (download it first), and set `detection_time` to the number in [tests/fixtures/inject_time.txt](tests/fixtures/inject_time.txt). [tests/fixtures/README.md](tests/fixtures/README.md) names the case's true fault, so you can check the answer.
 4. **Results page:** open https://faulttrack.jennasrunbooks.com/ for the results summary, confusion matrix and decision tree.
 
 **Local path:**
@@ -91,18 +91,19 @@ Points are the rubric maximums.
 - **Evidence:** [notebook.ipynb](notebook.ipynb) sections 2–3:
   - class balance per system
   - metric ranges and missing kinds per system (for example, the disk telemetry gap)
-  - a per-fault signature plot of raw cases around the injection time
-  - the effect of the scale floor and log compression
-  - mutual information and correlation
+  - per-fault signatures (2.5) and one raw case plotted around the injection time (2.6)
+  - the effect of the scale floor and log compression (2.7)
+  - mutual information and correlation (3)
 - **Verify:** look for the target distribution, a missing-values summary, and a feature importance table or plot.
 
 ### 3. Model training (3)
 
 - **Asks:** multiple models, both linear and tree-based, with their parameters tuned.
-- **Evidence:** [notebook.ipynb](notebook.ipynb) sections 4–5:
+- **Evidence:** [notebook.ipynb](notebook.ipynb) sections 4–6, and README "Results":
   - **baselines:** dummy and rule-based
   - **models:** logistic regression, decision tree, random forest, XGBoost
-  - **tuning:** each model tuned with grouped 5-fold CV
+  - **tuning:** each model's grid search is scored with nested grouped 5-fold CV (section 5)
+  - **final choice:** the selection rule and the final model's evaluation (section 6)
 - **Verify:** confirm the CV uses `GroupKFold` by `case_id`. There are 5 windows per case, so this prevents leakage. Confirm results are shown as mean ± std across folds, and that the final choice is justified.
 
 ### 4. Exporting notebook to script (1)
@@ -118,7 +119,7 @@ Points are the rubric maximums.
   - [data/features/re2_features.parquet](data/features/) is committed, with [ATTRIBUTION.md](data/features/ATTRIBUTION.md).
   - Raw-data instructions are in [data/README.md](data/README.md) (Zenodo link, md5 checksums, `make data`).
   - Random seeds are fixed.
-- **Verify:** run the local path. The macro F1 that `train.py` prints should match the README's "Results" table.
+- **Verify:** run the local path. The grouped 5-fold CV macro F1 that `train.py` prints should match the "Final model" row of the README's "Results" table.
 
 ### 6. Model deployment (1)
 

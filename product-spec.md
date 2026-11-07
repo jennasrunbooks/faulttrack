@@ -279,7 +279,6 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 │   ├── decisions.md        # go/no-go record + later design decisions, dated
 │   └── proposed-workflows/ # agent-proposed .github/ files + README; a human moves them
 ├── spike/                  # go/no-go scripts (download, EDA, spike); exploratory, not graded
-├── scripts/gh/             # maintainer-run gh scripts: labels.sh (labels + milestone), issues
 ├── models/                 # model.bin, feature_spec.json (committed; small)
 ├── web/                    # static results page served at /
 ├── tests/                  # feature parity, API smoke test; tests/fixtures/ = one small real case

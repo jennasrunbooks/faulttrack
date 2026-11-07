@@ -149,7 +149,7 @@ The headline mixes all three systems: every test fold has other cases from the s
 
 **What still generalizes:** on an unseen system the model mixes a resource fault (cpu, mem, disk, socket) with a network fault (delay, loss) in only 31 of 1,350 rows, and it stays well above the rule on every held-out system. What it loses is which fault *within* each group.
 
-**Limitation.** The headline, macro F1 0.799 ± 0.028, is measured on the same three systems the model was trained on. On a system it has never seen, the score is lower: 0.568 ± 0.114 across the three held-out systems, and 0.407 on Train Ticket, the system least like the others. On a new cluster, treat the fault label as a hint within its group (resource or network), and retrain on labeled incidents from that cluster before relying on it. The suspect service comes from an untrained rule, so this gap doesn't apply to it (hit rate 0.847–0.973 per system).
+**Limitation.** The headline, macro F1 0.799 ± 0.028, is measured on the same three systems the model was trained on. On a system it has never seen, the score is lower: 0.568 ± 0.114 across the three held-out systems, and 0.407 on Train Ticket, the system least like the others. On a new cluster, trust the group the label falls in (resource: cpu, mem, disk, socket; or network: delay, loss) more than the exact fault, and retrain on labeled incidents from that cluster before relying on it. The suspect service comes from an untrained rule, so this gap doesn't apply to it (hit rate 0.847–0.973 per system).
 
 ## Setup
 

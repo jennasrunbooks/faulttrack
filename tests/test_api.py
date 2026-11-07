@@ -125,7 +125,7 @@ def test_predict_valid_vector(client: TestClient) -> None:
     fault = body["fault"]
     assert fault["source"] == "model"
     assert fault["model_version"] == "test-1"
-    assert fault["cv_macro_f1"] == CV_F1
+    assert fault["cv_macro_f1"] == round(CV_F1, 3)
     assert set(fault["probabilities"]) == set(CLASSES)
     assert sum(fault["probabilities"].values()) == pytest.approx(1.0, abs=1e-3)
     assert fault["label"] in CLASSES
@@ -164,10 +164,10 @@ def test_predict_case_response_shape_and_labels(
     assert set(body) == {"fault", "suspect_service"}
     fault, suspect = body["fault"], body["suspect_service"]
     assert fault["source"] == "model"
-    assert fault["cv_macro_f1"] == CV_F1
+    assert fault["cv_macro_f1"] == round(CV_F1, 3)
     assert set(fault["probabilities"]) == set(CLASSES)
     assert suspect["source"] == "rule"
-    assert suspect["hit_rate"] == HIT_RATE
+    assert suspect["hit_rate"] == round(HIT_RATE, 3)
     assert "rule" not in suspect["name"]
     assert suspect["name"] == "cartservice"  # the column with the step
     assert isinstance(suspect["rule"], str) and suspect["rule"]
@@ -260,11 +260,11 @@ def test_predict_case_on_fixture(client: TestClient) -> None:
     body = resp.json()
     assert set(body) == {"fault", "suspect_service"}
     assert body["fault"]["source"] == "model"
-    assert body["fault"]["cv_macro_f1"] == CV_F1
+    assert body["fault"]["cv_macro_f1"] == round(CV_F1, 3)
     assert set(body["fault"]["probabilities"]) == set(CLASSES)
     suspect = body["suspect_service"]
     assert suspect["source"] == "rule"
-    assert suspect["hit_rate"] == HIT_RATE
+    assert suspect["hit_rate"] == round(HIT_RATE, 3)
     assert suspect["name"] == _fixture_row()["suspect_service"]
 
 
@@ -418,10 +418,10 @@ def test_predict_case_with_committed_artifacts() -> None:
     fault, suspect = body["fault"], body["suspect_service"]
     assert fault["label"] in spec["classes"]
     assert fault["source"] == "model"
-    assert fault["cv_macro_f1"] == results["fault_cv_macro_f1_mean"]
+    assert fault["cv_macro_f1"] == round(results["fault_cv_macro_f1_mean"], 3)
     assert fault["model_version"] == spec["model_version"]
     assert suspect["source"] == "rule"
-    assert suspect["hit_rate"] == results["suspect_hit_rate"]
+    assert suspect["hit_rate"] == round(results["suspect_hit_rate"], 3)
     print("fixture response:", json.dumps(body))  # shown with pytest -s, for the PR
 
 

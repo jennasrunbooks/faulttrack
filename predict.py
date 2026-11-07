@@ -215,8 +215,8 @@ def load_bundle(model_dir: Path, results_path: Path) -> Bundle:
         z_floor=float(_require(spec, "z_floor", spec_path)),
         log_z=bool(_require(spec, "log_z", spec_path)),
         norm_counts=norm_counts,
-        cv_macro_f1=metrics[RESULTS_FAULT_KEY],
-        hit_rate=metrics[RESULTS_SUSPECT_KEY],
+        cv_macro_f1=round(metrics[RESULTS_FAULT_KEY], 3),
+        hit_rate=round(metrics[RESULTS_SUSPECT_KEY], 3),
     )
 
 

@@ -38,5 +38,5 @@ docker-build: ## Build the service image; host only (plan line 10)
 docker-run: ## Run the service image; host only (plan line 10)
 	docker run --rm -p 8080:8080 faulttrack
 
-deploy: ## Deploy to Fly.io; maintainer, host only (plan line 11)
-	fly deploy
+deploy: ## Deploy to Fly.io; maintainer only, host only (plan line 11)
+	fly deploy --ha=false

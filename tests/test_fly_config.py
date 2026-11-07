@@ -12,6 +12,12 @@ def _fly() -> dict:
         return tomllib.load(f)
 
 
+def test_app_and_region():
+    fly = _fly()
+    assert fly["app"] == "faulttrack"
+    assert fly["primary_region"] == "iad"
+
+
 def test_scale_to_zero_settings():
     svc = _fly()["http_service"]
     assert svc["auto_stop_machines"] == "stop"
@@ -22,8 +28,8 @@ def test_scale_to_zero_settings():
 
 def test_machine_is_shared_cpu_512mb():
     (vm,) = _fly()["vm"]
+    assert vm["size"] == "shared-cpu-1x"
     assert vm["memory"] == "512mb"
-    assert vm["size"].startswith("shared-cpu")
 
 
 def test_port_matches_dockerfile_and_env():
@@ -34,6 +40,9 @@ def test_port_matches_dockerfile_and_env():
     docker_port = int(match.group(1))
     assert fly["http_service"]["internal_port"] == docker_port
     assert int(fly["env"]["PORT"]) == docker_port
+    expose = re.search(r"^EXPOSE\s+(\d+)", dockerfile, re.M)
+    assert expose is not None
+    assert fly["http_service"]["internal_port"] == int(expose.group(1))
 
 
 def test_builds_the_repo_dockerfile():
@@ -50,6 +59,6 @@ def test_health_check_hits_an_existing_route():
     assert check["method"] == "GET"
 
 
-def test_make_deploy_runs_fly_deploy():
+def test_make_deploy_runs_fly_deploy_without_ha():
     makefile = (ROOT / "Makefile").read_text()
-    assert re.search(r"^deploy:.*\n\tfly deploy$", makefile, re.M)
+    assert re.search(r"^deploy:.*\n\tfly deploy --ha=false$", makefile, re.M)

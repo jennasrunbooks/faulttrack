@@ -1,19 +1,21 @@
 # Fly.io config for FaultTrack (spec Section 6, "Deployment"). Maintainer-run only:
 # `make deploy` from the Mac host. The devcontainer has no Fly.io credentials.
 #
-# First time: `fly launch --no-deploy --copy-config`, then `fly deploy`, then
+# The Fly app already exists. First time: `fly deploy --ha=false`, then
 # `fly certs add faulttrack.jennasrunbooks.com` and the DNS record (README "Deploy").
 
 app = "faulttrack"
-primary_region = "ams"
+primary_region = "iad"
 
+# Build the repo's service Dockerfile on Fly's builder.
 [build]
   dockerfile = "Dockerfile"
 
+# The Dockerfile starts uvicorn on $PORT.
 [env]
-  # The Dockerfile starts uvicorn on $PORT; keep this equal to internal_port below.
   PORT = "8080"
 
+# Public HTTPS service; keep internal_port equal to PORT above.
 [http_service]
   internal_port = 8080
   force_https = true
@@ -22,13 +24,15 @@ primary_region = "ams"
   auto_start_machines = true
   min_machines_running = 0
 
+  # Fly marks the machine unhealthy if /healthz stops answering.
   [[http_service.checks]]
     method = "GET"
     path = "/healthz"
     interval = "30s"
     timeout = "5s"
-    grace_period = "20s"
+    grace_period = "10s"
 
+# Smallest shared machine (spec Section 6); one machine keeps the cost near zero.
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"

@@ -234,6 +234,10 @@ fly status                                      # one machine, region iad
 
 **Screenshots** of the deployed service in use: [docs/images/](docs/images/README.md).
 
+![Swagger UI: POST /predict/case on the live service](docs/images/01-docs-predict-case.png)
+
+![Results page on faulttrack.jennasrunbooks.com](docs/images/02-results-page.png)
+
 ## Repository layout
 
 ```text

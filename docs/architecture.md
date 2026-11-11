@@ -10,7 +10,7 @@ This page covers how FaultTrack is put together:
 
 What to build and why is in [`product-spec.md`](../product-spec.md), and working rules are in [`AGENTS.md`](../AGENTS.md). Agents and reviewers should read this page before changing code that crosses module boundaries.
 
-> **Status:** this is the target design for the graded build (spec Section 10). Feature names, model settings and the results figures listed here are fixed in `models/feature_spec.json` and `web/results.json` once `train.py` exists. Where this page and those files disagree, the files win, and this page gets corrected.
+> **Status:** this page describes the submitted build. Feature names, model settings and results are fixed in `models/feature_spec.json` and `web/results.json`. Where this page and those files disagree, the files win, and this page gets corrected.
 
 ## Overview
 
@@ -88,9 +88,9 @@ flowchart LR
 ```
 
 **Design notes:**
-- **The features are service-agnostic.** Columns are grouped by metric *kind*, never by service name, so one model covers systems with 11, 15 or 68 services. A service and its database (`carts`, `carts-db`) count as one service, keeping the larger shift of the two (see `docs/decisions.md`).
+- **The features are service-agnostic.** Columns are grouped by metric *kind*, never by service name, so one model covers systems with 11 or 68 services. A service and its database (`carts`, `carts-db`) count as one service, keeping the larger shift of the two (see `docs/decisions.md`).
 - **Scale floor and log compression.** Without them, near-constant metrics (memory) get huge z-scores that hide everything else. In the go/no-go spike, adding them took logistic regression on RE2-OB from 0.54 to 0.85 macro F1.
-- **Missing kinds are 0, not NaN.** Some services don't export `diskio`, `latency` or `error`. A kind with no columns gets 0 for every aggregate. This is a known blind spot for disk faults: in RE2-OB, only 2 of the 5 disk-fault services expose `diskio`.
+- **Missing kinds are 0, not NaN.** Some services don't export `diskio`, `latency` or `error`. A kind with no columns gets 0 for every aggregate. This is a known blind spot for disk faults: `diskio` covers only 7 of 11 services in OB and SS (notebook §2.3), so a disk fault there often looks like a memory fault.
 - **Row identity columns:** `case_id`, `system`, `service`, `fault` (label), `delay_s` and `suspect_service` (the root-cause rule's pick), plus the metadata counts `n_services_<kind>`. These are never model inputs. `case_id` is the CV group.
 
 ## Training
@@ -108,7 +108,7 @@ flowchart TD
 | Artifact | Contents | Used by |
 |---|---|---|
 | `models/model.bin` | The fitted classifier, pickled | `predict.py` |
-| `models/feature_spec.json` | Ordered feature names, class labels, the baseline and post window lengths, the scale floor, `model_version` (for example `2026.11.10-rf`) | `predict.py` (validates input and builds the vector in order), parity test |
+| `models/feature_spec.json` | Ordered feature names, class labels, the baseline and post window lengths, the scale floor, `model_version` (for example `2026.11.06-rf`) | `predict.py` (validates input and builds the vector in order), parity test |
 | `web/results.json` | Evaluation figures written by `train.py` | the results page at `/` |
 
 **Evaluation rules (spec Section 5):**
@@ -136,14 +136,15 @@ sequenceDiagram
 
 | Endpoint | Input | Output | Errors |
 |---|---|---|---|
-| `GET /` | none | Static results page (`web/index.html` + `results.json`) | none |
+| `GET /` | none | Static results page (`web/index.html`) | none |
+| `GET /results.json` | none | The evaluation figures the page reads (`web/results.json`) | none |
 | `POST /predict` | JSON feature vector (names from `feature_spec.json`) | `fault` block only (spec Section 6) | 422: missing or unknown features |
 | `POST /predict/case` | Multipart: `simple_metrics.csv` + `detection_time` (Unix seconds) | `fault` block (model) + `suspect_service` block (rule), each with its source and its accuracy | 413: file too large · 422: bad input, or the window falls outside the file · 400: no usable metric columns (for example a raw `metrics.csv`) |
 | `GET /healthz` | none | `{"status": "ok", "model_version": …}` | none |
 | `GET /docs` | none | Swagger UI | none |
 
 **Runtime behavior:**
-- **Startup:** the model and spec load once at startup. If either is missing, the app exits instead of serving errors.
+- **Startup:** the model, the spec, `web/results.json` and `web/index.html` load once at startup. If any is missing, the app exits instead of serving errors. Only the routes in the table above respond; every other path is a 404.
 - **State:** the app holds no state and writes nothing to disk. Uploads are read in memory, subject to the size limit.
 - **Port:** the app listens on `$PORT` (default 8080).
 
@@ -167,11 +168,11 @@ A trained ranking model is stretch work.
 ```mermaid
 flowchart LR
     SRC["repo at a commit"] --> IMG["Dockerfile<br/>1. deps layer: uv sync --frozen --no-dev --no-install-project<br/>2. COPY src/, predict.py, models/, web/<br/>3. uv sync --frozen --no-dev<br/>non-root user, CMD uvicorn on $PORT"]
-    IMG -->|fly deploy, maintainer| FLY["Fly.io machine<br/>shared CPU, 512 MB<br/>auto-stop, min 0"]
+    IMG -->|fly deploy, maintainer| FLY["Fly.io machine<br/>shared-cpu-1x, 512 MB, iad<br/>auto-stop, min 0"]
     DNS["faulttrack.jennasrunbooks.com<br/>(fly certs + DNS record)"] --> FLY
 ```
 
-**Cold starts:** the machine stops when idle, so the first request after a quiet period takes a few seconds while it starts. Later requests are fast.
+**Cold starts:** the machine stops when idle, so the first request after a quiet period takes about 10 seconds while it starts. Later requests are fast.
 
 ## CI
 
@@ -188,7 +189,7 @@ flowchart LR
 | Question | Answer lives in |
 |---|---|
 | What to build, by when | `product-spec.md` |
-| Why a modelling or evaluation choice was made | `docs/decisions.md` |
+| Why a modeling or evaluation choice was made | `docs/decisions.md` |
 | Exact feature list and model settings | `models/feature_spec.json` |
 | Current results | `web/results.json`, the README "Results" section |
 | Who may change what | `docs/permissions.md`, `docs/agent-team.md` |

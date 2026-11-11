@@ -284,15 +284,18 @@ def create_app(
         ),
     )
 
-    @app.get("/", include_in_schema=False)
+    @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     def index() -> FileResponse:
         return FileResponse(index_path, media_type="text/html")
 
-    @app.get("/results.json", include_in_schema=False)
+    @app.api_route("/results.json", methods=["GET", "HEAD"], include_in_schema=False)
     def results() -> FileResponse:
         return FileResponse(results_path, media_type="application/json")
 
+    # HEAD is registered separately and kept out of the schema: one api_route with
+    # both methods gives two operations with the same operationId in /openapi.json.
     @app.get("/healthz", response_model=Health, summary="Liveness check")
+    @app.head("/healthz", include_in_schema=False)
     def healthz() -> Health:
         return Health(status="ok", model_version=bundle.model_version)
 

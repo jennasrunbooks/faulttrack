@@ -161,7 +161,7 @@ These come from a fresh-clone run on Nov 10 (plan line 13) and match `web/result
 | Dummy baseline (macro F1) | notebook §4 | 0.030 ± 0.002 (min 0.028, max 0.033) |
 | Leave-one-system-out (macro F1, mean over held-out systems) | notebook §8 (also printed by `train.py`) | 0.568 ± 0.114 (OB 0.655, SS 0.643, TT 0.407) |
 | Suspect-service rule hit rate (a rule, not the model) | notebook §6.7 | 0.900 (OB 0.880, SS 0.973, TT 0.847) |
-| Tests | `uv run pytest` | 139 passed |
+| Tests | `uv run pytest` | 143 passed |
 | Fresh clone to running API | local path above | under 1 min without the notebook: clone 1 s, `uv sync` 17 s (empty uv cache, Python 3.12 already installed), `train.py` 5 s, server up 1 s. Running the notebook adds about 5 min |
 
 ## Known limits

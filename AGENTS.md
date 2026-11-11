@@ -56,7 +56,7 @@ This file is the entry point. Before starting a workstream, read the doc for the
 | Area | Stack | Location |
 |---|---|---|
 | Shared library | Python 3.12, pandas, NumPy; package managed with `uv` (src layout, hatchling build) | `src/faulttrack/` |
-| Modelling | scikit-learn, XGBoost; Jupyter for the notebook | `notebook.ipynb`, `train.py` |
+| Modeling | scikit-learn, XGBoost; Jupyter for the notebook | `notebook.ipynb`, `train.py` |
 | Serving | FastAPI, Pydantic v2, uvicorn | `predict.py`, `web/` |
 | Tests | pytest, httpx (FastAPI `TestClient`) | `tests/` |
 | Lint / types | Ruff (lint + format), basedpyright (a Pyright fork from PyPI that ships Node as a wheel, so nothing is downloaded at run time; reads `[tool.pyright]`, the same settings Pylance uses in VS Code) | settings in `pyproject.toml` |
@@ -111,7 +111,7 @@ Run everything from the repo root inside the devcontainer. Prefer `make` targets
 
 **What only runs on the host or in CI:**
 - **Docker:** `make docker-build` and `make docker-run` need Docker, which the devcontainer deliberately doesn't have. They run on the maintainer's Mac and in CI's `docker` job. Don't try to install Docker.
-- **Deploys:** `make deploy` (`fly deploy`) is for the maintainer only.
+- **Deploys:** `make deploy` (`fly deploy --ha=false`) is for the maintainer only.
 
 ## Hard rules
 
@@ -185,7 +185,7 @@ These are enforced by the devcontainer (no Docker, no cloud credentials), the ag
 - Keep `/docs` (Swagger UI) working; reviewers use it.
 
 **Writing (README, docs, PR text, notebook markdown)**
-- Plain, specific language in US English (license, color, generalize). Don't use "robust". State the numbers, the fold spread and the limitation.
+- Plain, specific language in US English, consistently (license, color, generalize, modeling, canceled). Use "robust" sparingly, and only where it says what something is robust to. State the numbers, the fold spread and the limitation.
 - Credit RCAEval (the paper and DOI `10.5281/zenodo.14590730`) wherever the data is described.
 - Don't mention the maintainer's other projects in the README.
 

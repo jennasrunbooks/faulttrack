@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 # One run per PR: a new push or label change cancels the older run.
-# Runs on main are never cancelled, so every merged commit is fully checked.
+# Runs on main are never canceled, so every merged commit is fully checked.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -167,7 +167,7 @@ jobs:
           echo "$RESULTS" | jq -r 'to_entries[] | "  \(.key): \(.value.result)"'
           status=0
           if [ "$FAILED" = "true" ]; then
-            echo "::error::A required job failed or was cancelled."
+            echo "::error::A required job failed or was canceled."
             status=1
           fi
           if [ "$DO_NOT_MERGE" = "true" ]; then

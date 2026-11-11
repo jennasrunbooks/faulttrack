@@ -396,6 +396,19 @@ def test_nothing_else_is_served(client: TestClient, path: str) -> None:
     assert client.get(path).status_code == 404
 
 
+@pytest.mark.parametrize("path", ["/", "/results.json", "/healthz"])
+def test_head_matches_get_without_a_body(client: TestClient, path: str) -> None:
+    get = client.get(path)
+    head = client.head(path)
+    assert head.status_code == 200
+    assert head.headers["content-type"] == get.headers["content-type"]
+    assert head.content == b""
+
+
+def test_head_on_unknown_path_is_404(client: TestClient) -> None:
+    assert client.head("/model.bin").status_code == 404
+
+
 def test_web_files_are_not_in_the_openapi_schema(client: TestClient) -> None:
     paths = set(client.get("/openapi.json").json()["paths"])
     assert paths == {"/healthz", "/predict", "/predict/case"}

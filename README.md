@@ -71,7 +71,7 @@ From [notebook.ipynb](notebook.ipynb) sections 2–3 (section 6.5 for the model'
 - **The disk telemetry gap** ([§2.3](notebook.ipynb)): only 7 of 11 services export disk I/O in OB and SS, against 67 of 68 in TT. For disk faults, disk I/O clearly shifts in 27% of OB cases and 7% of SS cases, against 100% of TT cases, while the memory shift is large everywhere (median `mem_max` 4.7–8.4). In OB and SS a disk fault looks like a memory fault, which is where the model's 18 disk → mem errors come from.
 - **Why scaling mattered** ([§2.7](notebook.ipynb)): on the fixture case, a plain z-score reaches 1000 for a latency column whose baseline is near 0, and near-constant columns crowd the top of the ranking. With the scale floor and log compression the same column scores 6.8, and `recommendationservice_mem` drops from rank 5 to rank 36. In the go/no-go spike, this change alone took logistic regression on OB from 0.54 to 0.85 macro F1 ([docs/decisions.md](docs/decisions.md)); the notebook doesn't re-run that ablation.
 - **Feature importance** ([§3](notebook.ipynb), [§6.5](notebook.ipynb)): memory features carry the most mutual information with the label (`top_mem` 1.06 and `mem_max` 1.04 nats, out of a maximum of 1.79). The six `error` features carry almost none (at most 0.04) and have exactly 0 permutation importance, because only a few services export errors at all.
-- **The systems differ in size** ([§2.3](notebook.ipynb), [§3.1](notebook.ipynb)): 11 services in OB and SS (after merging each service with its `-db`) and 68 in TT. Features that add up over services grow with it: the median `cpu_abssum` is about 10 in OB and SS and 34 in TT. This sets up the [unseen-system gap](#generalizing-to-an-unseen-system).
+- **The systems differ in size** ([§2.3](notebook.ipynb), [§3.1](notebook.ipynb), [§8.2](notebook.ipynb)): 11 services in OB and SS (after merging each service with its `-db`) and 68 in TT. Features that add up over services grow with it: the median `cpu_abssum` is about 10 in OB and SS and 34 in TT. This sets up the [unseen-system gap](#generalizing-to-an-unseen-system).
 
 ## Results
 
@@ -172,7 +172,7 @@ uv run uvicorn predict:app --port 8080   # serves the API: http://localhost:8080
 uv run pytest                            # tests
 ```
 
-**Example request** (from a second terminal):
+**Example request** (from the repo root, in a second terminal):
 
 ```bash
 curl -s localhost:8080/healthz
@@ -204,7 +204,7 @@ docker build -t faulttrack .        # or: make docker-build
 docker run --rm -p 8080:8080 faulttrack   # or: make docker-run
 ```
 
-The image holds the runtime dependencies, `src/`, `predict.py`, `models/` and `web/` only, and runs as a non-root user. It listens on `$PORT` (default 8080). Check it with the same `curl` commands as above:
+The image holds the runtime dependencies, `src/`, `predict.py`, `models/` and `web/` only, and runs as a non-root user. It listens on `$PORT` (default 8080). Check it from the repo root, with the same `curl` commands as above:
 
 ```bash
 curl -s localhost:8080/healthz
@@ -233,6 +233,10 @@ fly status                                      # one machine, region iad
 `--ha=false` keeps it to a single machine; on a first deploy Fly would otherwise create two. Redeploy with `fly deploy --ha=false` after any change to the image (`src/`, `predict.py`, `models/`, `web/`, `Dockerfile`, `uv.lock`).
 
 **Screenshots** of the deployed service in use: [docs/images/](docs/images/README.md).
+
+![Swagger UI: POST /predict/case on the live service](docs/images/01-docs-predict-case.png)
+
+![Results page on faulttrack.jennasrunbooks.com](docs/images/02-results-page.png)
 
 ## Repository layout
 

@@ -29,7 +29,7 @@
 
 ### Non-goals (for the graded version)
 
-- **No logs or traces.** RE2's raw logs and traces run to millions of lines per case. They're stretch work only (Section 11).
+- **No logs or traces.** RE2's raw logs and traces run to millions of lines per case. They're stretch work only (Section 12).
 - **No live Prometheus or Alertmanager integration, no Kubernetes or Helm, no EKS.** All stretch, after submission.
 - **No claim of production accuracy on a new cluster.** The cross-system results show a domain-shift gap, which is documented, not hidden.
 
@@ -119,7 +119,7 @@ For each metric kind (`cpu`, `mem`, `diskio`, `socket`, `latency`, `error`, `wor
 
 ---
 
-## 5. Modelling and evaluation
+## 5. Modeling and evaluation
 
 ### 5.1 Models
 
@@ -175,6 +175,7 @@ These numbers come from the spike scripts (`spike/`), not from tuned final model
 **`predict.py`**, a FastAPI app with Pydantic validation, serves:
 
 - **`GET /`:** a static results page from `web/` (`index.html` + `results.json` written by `train.py`): headline results, the confusion matrix, sample held-out cases, and the runbook tree.
+- **`GET /results.json`:** the evaluation figures the results page reads.
 - **`POST /predict`:** takes a feature vector and returns the `fault` block only (probabilities and top contributing features). A feature vector has no per-service detail, so there's no suspect service.
 - **`POST /predict/case`:** takes a raw case (a `simple_metrics.csv` upload plus the detection time) and builds the features with the shared code. It returns the `fault` block from the model and the `suspect_service` block from the rule.
 - **`GET /healthz`** and **`GET /docs`** (Swagger UI, for reviewers).
@@ -188,7 +189,7 @@ Example response:
     "probabilities": {"loss": 0.62, "delay": 0.27, "cpu": 0.04, "mem": 0.03, "disk": 0.02, "socket": 0.02},
     "top_signals": ["latency_max", "top_latency_share", "workload_max"],
     "source": "model",
-    "model_version": "2026.11.10-rf",
+    "model_version": "2026.11.06-rf",
     "cv_macro_f1": 0.799
   },
   "suspect_service": {
@@ -212,7 +213,7 @@ Example response:
 
 **Deployment:**
 - **Host:** Fly.io, at `https://faulttrack.jennasrunbooks.com`.
-- **Machine:** shared CPU, 512 MB, auto-stop, `min_machines_running = 0`.
+- **Machine:** one `shared-cpu-1x` machine with 512 MB in `iad` (Ashburn), auto-stop, `min_machines_running = 0` (`fly.toml`).
 - **Port:** the app listens on `$PORT` (default 8080).
 - **Domain:** `fly certs add` plus DNS records at the `jennasrunbooks.com` DNS host.
 - **Evidence for reviewers:** screenshots or a short video.
@@ -270,6 +271,7 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 │       ├── features.py     # shared feature code: `from faulttrack import features` in train.py + predict.py
 │       ├── data.py         # case discovery + loading + quirks
 │       ├── evaluation.py   # the only CV code: grouped_cv, leave_one_system_out, suspect_hit_rate
+│       ├── models.py       # RuleBaseline, candidate models, tuning grids, final_model()
 │       └── build.py        # `make features`: feature table + inventory from data/raw/
 ├── docs/
 │   ├── images/             # README figures + deployment screenshots (cloud-deployment evidence)
@@ -316,8 +318,8 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 - **Package layout:** `src/faulttrack/`. `pyproject.toml` has a `[build-system]` (hatchling: `requires = ["hatchling"]`, `build-backend = "hatchling.build"`), so `uv sync` installs `faulttrack` into `.venv` as an editable package. Root scripts then `import faulttrack` with no `sys.path` tricks. Tests run against the installed package, which catches packaging mistakes early.
 - **Tool settings live in `pyproject.toml`:** `[tool.ruff]` (line length 88; rules E4, E7, E9, F, I, B, UP) and `[tool.pyright]` (`venvPath = "."`, `venv = ".venv"`, `typeCheckingMode = "standard"`, `exclude = ["spike", "**/__pycache__", "**/.*"]`). `spike/` is excluded from Ruff and the type check because it's exploratory and not graded. Setting `exclude` replaces Pyright's defaults, so the default patterns are listed again. basedpyright reads `[tool.pyright]`, so don't also add a `[tool.basedpyright]` section (having both is an error).
 - **Runtime vs. dev dependencies:**
-  - **runtime:** pandas, numpy, pyarrow, scikit-learn, xgboost, fastapi, uvicorn, python-multipart (file uploads for `/predict/case`)
-  - **dev:** matplotlib, jupyter, ipykernel, ruff, basedpyright, pytest, httpx. basedpyright is a Pyright fork on PyPI that ships Node as a wheel (`nodejs-wheel-binaries`), so type checking never downloads anything at run time.
+  - **runtime:** pandas, numpy, scikit-learn, fastapi, uvicorn, python-multipart (file uploads for `/predict/case`). This is all the service image installs.
+  - **dev:** pyarrow (reads the parquet feature table), xgboost (a candidate model; the final model is a random forest), matplotlib, jupyter, ipykernel, ruff, basedpyright, pytest, httpx. basedpyright is a Pyright fork on PyPI that ships Node as a wheel (`nodejs-wheel-binaries`), so type checking never downloads anything at run time.
 
 ---
 
@@ -325,9 +327,9 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 
 | Criterion | Max | Full marks means | Where in this repo | Done |
 |---|---|---|---|---|
-| Problem description | 2 | README explains the problem and how the solution will be used | `README.md`: Problem, Users, How it's used | ☐ |
+| Problem description | 2 | README explains the problem and how the solution will be used | `README.md`: Problem, How it's used | ☐ |
 | EDA | 2 | Ranges, missing values, target analysis, feature importance | `notebook.ipynb` §2–3: per-fault signatures, disk telemetry gap, system-size table, mutual information, correlation | ☐ |
-| Model training | 3 | Multiple models (linear **and** tree-based) **and** tuned | `notebook.ipynb` §4–5: LR, DT, RF, XGBoost, tuned with grouped CV | ☐ |
+| Model training | 3 | Multiple models (linear **and** tree-based) **and** tuned | `notebook.ipynb` §4–6 and §8: LR, DT, RF, XGBoost, tuned with nested grouped CV; README "Results" | ☐ |
 | Exporting notebook to script | 1 | Training logic in a script | `train.py` | ☐ |
 | Reproducibility | 1 | Notebook and script re-run; data accessible | committed `data/features/re2_features.parquet` + `make data`; fresh-clone check | ☐ |
 | Model deployment | 1 | Served with Flask, FastAPI or similar | `predict.py` (FastAPI) | ☐ |
@@ -355,8 +357,8 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 | 8 | `train.py` | Trains the final model; writes `models/model.bin`, `feature_spec.json`, `web/results.json` | Tue Nov 10 | Done (Nov 6) |
 | 9 | `predict.py` + tests | FastAPI `/`, `/predict`, `/predict/case`, `/healthz`; Pydantic models; parity + API smoke tests | Thu Nov 12 | Done (Nov 6) |
 | 10 | Containerization | CI `docker` job builds the service image when image inputs change (build only, no push); service `Dockerfile` (two steps: `uv sync --frozen --no-dev --no-install-project` for a cached dependency layer, then `COPY src/` + `uv sync --frozen --no-dev` to install the package; `$PORT`); `make docker-build` / `docker-run`; local test on the Mac | Thu Nov 12 | Done (Nov 6) |
-| 11 | Cloud deployment | Fly.io app; `fly.toml`; `faulttrack.jennasrunbooks.com` (certs + DNS); screenshots or video | Fri Nov 13 | In progress (`fly.toml` merged Nov 6; deploy, DNS and screenshots in #29) |
-| 12 | README + results page | Problem, data + credit, EDA highlights, results, generalization section, setup / run / Docker / deploy, rubric map; `web/index.html`; `REVIEWING.md` links and commands checked, "Numbers" table filled in line 13 | Sat Nov 14 | In progress (results page merged Nov 6; README in #30) |
+| 11 | Cloud deployment | Fly.io app; `fly.toml`; `faulttrack.jennasrunbooks.com` (certs + DNS); screenshots or video | Fri Nov 13 | Done (Nov 10) |
+| 12 | README + results page | Problem, data + credit, EDA highlights, results, generalization section, setup / run / Docker / deploy, rubric map; `web/index.html`; `REVIEWING.md` links and commands checked, "Numbers" table filled in line 13 | Sat Nov 14 | Done (Nov 7) |
 | 13 | Reproducibility check | Fresh clone in a new devcontainer: `make features` → notebook → `train.py` → `predict.py` → Docker → live URL; fix anything that breaks | Sun Nov 15 | ☐ |
 | 14 | **Submit** | On `main`: `git switch main && git pull`, `git tag -a midterm-submission -m "ML Zoomcamp 2026 midterm submission"`, `git push origin midterm-submission`; publish it as a GitHub release; submit the tag URL on the course platform | **Mon Nov 16, before 17:00** | ☐ |
 **PR CI design (`ci.yaml`).** Jobs run only when the files they check change, so a docs-only PR finishes in seconds:
@@ -374,7 +376,7 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 - **`full-ci` label:** adding it to a PR runs every job, whatever changed. The workflow triggers on `pull_request` types `opened`, `synchronize`, `reopened`, `labeled` and `unlabeled`. `workflow_dispatch` runs everything on demand.
 - **Other settings:** `concurrency` cancels superseded runs on the same PR, and `astral-sh/setup-uv` caches the uv download cache.
 - **Why job-level skips:** don't put a top-level `paths:` filter on the workflow. If the whole workflow is skipped, its required checks never report, and the PR can't merge. Instead the workflow always starts, and individual jobs are skipped with `if:`. GitHub counts a skipped job as passing for a required check. ConsoleTrack uses the same pattern.
-- **Why `ci-ok`:** it gives branch protection one stable check name, so adding or renaming jobs never means editing branch protection. It runs with `if: always()` and fails if any job in its `needs:` failed or was cancelled.
+- **Why `ci-ok`:** it gives branch protection one stable check name, so adding or renaming jobs never means editing branch protection. It runs with `if: always()` and fails if any job in its `needs:` failed or was canceled.
 - **`do-not-merge` label:** `ci-ok` also fails while the PR carries this label, so branch protection blocks the merge. The workflow triggers on `labeled` and `unlabeled`, so `ci-ok` re-runs as soon as the label is added or removed.
 
 **Dependabot (package hygiene).**
@@ -412,7 +414,7 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 - **Raw-metric features from `metrics.csv`:**
   - `container-fs-*` and `container-blkio-*` for disk
   - network packets dropped and errors, plus `istio-error-total`, for loss vs. delay
-- **Relative features**, if not done in line 7.
+- **Revisit `--norm-counts` and relative features.** Both were tried in line 7 and not adopted (`docs/decisions.md`).
 - **Helm chart + Helmfile on kind** with kube-prometheus-stack, Loki, Tempo and OTel, plus model-ops metrics (`faulttrack_predictions_total{fault}`, `faulttrack_inference_seconds`, `faulttrack_feature_drift{feature}`) and a Grafana dashboard.
 - **`/alerts` Alertmanager webhook**, with a PromQL adapter per metric kind.
 - **CI/CD in GitHub Actions** (beyond the PR checks in lines 3 and 10):
@@ -440,7 +442,7 @@ These also go into `AGENTS.md`.
   - `features.py` is shared by training and serving. **Any change to it must keep the parity test green.**
 - **Data rules:**
   - Never commit `data/raw/`, zips, `.venv*`, `.vscode/` or credentials.
-  - Only `data/features/re2_features.parquet` (with `ATTRIBUTION.md`) is committed data.
+  - The only committed data is `re2_features.parquet` and `re2_inventory.parquet` in `data/features/` (with `ATTRIBUTION.md`), plus the small fixture under `tests/fixtures/`.
 - **Environment:**
   - Run Python only via `uv run …` in the devcontainer.
   - Change dependencies only with `uv add` / `uv remove`, and commit `pyproject.toml` + `uv.lock` together.
@@ -454,6 +456,7 @@ These also go into `AGENTS.md`.
 
 ## 14. Open questions
 
-- **md5 sums for RE2-SS and RE2-TT:** check them against the Zenodo record, and fill them into Section 3.2.
-- **Final model:** RF or XGBoost, decided in workstream 6.
-- **Relative features:** include them in the graded version, or keep them as stretch? Decided by workstream 7's result.
+None open. Resolved:
+- **md5 sums:** all three suites verified against Zenodo (Nov 3–4; Section 3.2 and `data/README.md`).
+- **Final model:** random forest (plan line 6, PR #23).
+- **Relative features:** tried in plan line 7 and not adopted (PR #25); listed under stretch.

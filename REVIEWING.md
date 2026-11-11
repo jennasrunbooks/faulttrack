@@ -110,7 +110,7 @@ Points are the rubric maximums.
 
 - **Asks:** the training logic is exported to a separate script.
 - **Evidence:** [train.py](train.py).
-- **Verify:** `uv run python train.py` finishes and writes `models/model.bin`, `models/feature_spec.json` and `web/results.json`.
+- **Verify:** `uv run python train.py` finishes and writes `models/model.bin`, `models/feature_spec.json` and `web/results.json`. These files are committed, so `git status` then shows them as modified. That's expected: `model.bin` comes out byte-identical, and in the JSON files only `generated_at` and `model_version` change (`model_version` holds the date `train.py` ran). `git restore models web` puts the committed versions back.
 
 ### 5. Reproducibility (1)
 
@@ -153,16 +153,16 @@ Points are the rubric maximums.
 
 ## Numbers, measured not guessed
 
-These are filled in from a fresh-clone run on Nov 15 (plan line 13) and match `web/results.json`.
+These come from a fresh-clone run on Nov 10 (plan line 13) and match `web/results.json`.
 
 | What | Command | Result |
 |---|---|---|
-| Grouped 5-fold CV, final model, 3 systems (macro F1) | `uv run python train.py` | _mean ± std (min/max)_ |
-| Dummy baseline (macro F1) | notebook §4 | _value_ |
-| Leave-one-system-out (macro F1, mean over held-out systems) | notebook §6 | _value_ |
-| Suspect-service rule hit rate (a rule, not the model) | notebook §6 | _value_ |
-| Tests | `uv run pytest` | _N passed_ |
-| Fresh clone to running API | local path above | _minutes_ |
+| Grouped 5-fold CV, final model, 3 systems (macro F1) | `uv run python train.py` | 0.799 ± 0.028 (min 0.775, max 0.850) |
+| Dummy baseline (macro F1) | notebook §4 | 0.030 ± 0.002 (min 0.028, max 0.033) |
+| Leave-one-system-out (macro F1, mean over held-out systems) | notebook §8 (also printed by `train.py`) | 0.568 ± 0.114 (OB 0.655, SS 0.643, TT 0.407) |
+| Suspect-service rule hit rate (a rule, not the model) | notebook §6.7 | 0.900 (OB 0.880, SS 0.973, TT 0.847) |
+| Tests | `uv run pytest` | 143 passed |
+| Fresh clone to running API | local path above | under 1 min without the notebook: clone 1 s, `uv sync` 17 s (empty uv cache, Python 3.12 already installed), `train.py` 5 s, server up 1 s. Running the notebook adds about 5 min |
 
 ## Known limits
 

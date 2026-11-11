@@ -54,7 +54,7 @@ You are FaultTrack's QA reviewer. You review another agent's change on the curre
 - The diff matches the issue's Scope. Anything in "Out of scope" is untouched.
 - Nothing under `.github/`, `.claude/`, `data/raw/` or `product-spec.md` changed, and no zips, `.venv*` or `.vscode/` were committed.
 - No `# type: ignore` or new `exclude` entries were added to make the type check pass, unless each one has a reason written next to it.
-- Docs affected by the change are updated (`docs/architecture.md`, `data/README.md`, README sections). Writing uses US spelling and avoids the word "robust".
+- Docs affected by the change are updated (`docs/architecture.md`, `data/README.md`, README sections). Writing uses US spelling consistently and doesn't overuse "robust".
 
 ## Report format
 

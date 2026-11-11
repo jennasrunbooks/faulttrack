@@ -25,7 +25,7 @@ The plan lines in spec Section 10 group into four workstreams. The *Owner* colum
 | Workstream | Plan lines | Owner | Main files |
 |---|---|---|---|
 | **Data and features** | 3 (scaffold), 4 (shared library) | Implementer. Jenna does the `.github/` and branch-protection parts of line 3 | `pyproject.toml`, `Makefile`, `src/faulttrack/`, `data/`, `tests/` |
-| **Modelling** | 5, 6 (notebook), 7 (generalization), 8 (`train.py`) | Implementer drafts; Jenna reviews every result | `notebook.ipynb`, `train.py`, `models/`, `web/results.json`, `docs/decisions.md` |
+| **Modeling** | 5, 6 (notebook), 7 (generalization), 8 (`train.py`) | Implementer drafts; Jenna reviews every result | `notebook.ipynb`, `train.py`, `models/`, `web/results.json`, `docs/decisions.md` |
 | **Serving** | 9 (`predict.py` + tests), 10 (containerization) | Implementer writes the code; Jenna builds and runs the image on the Mac | `predict.py`, `web/`, `tests/`, `Dockerfile` |
 | **Delivery** | 11 (deploy), 12 (README), 13 (reproducibility check), 14 (submit) | Jenna, with an implementer drafting the README and `fly.toml` | `README.md`, `fly.toml`, `docs/images/` |
 

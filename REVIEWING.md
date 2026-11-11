@@ -110,7 +110,7 @@ Points are the rubric maximums.
 
 - **Asks:** the training logic is exported to a separate script.
 - **Evidence:** [train.py](train.py).
-- **Verify:** `uv run python train.py` finishes and writes `models/model.bin`, `models/feature_spec.json` and `web/results.json`.
+- **Verify:** `uv run python train.py` finishes and writes `models/model.bin`, `models/feature_spec.json` and `web/results.json`. These files are committed, so `git status` then shows them as modified. That's expected: `model.bin` comes out byte-identical, and in the JSON files only `generated_at` and `model_version` change (`model_version` holds the date `train.py` ran). `git restore models web` puts the committed versions back.
 
 ### 5. Reproducibility (1)
 

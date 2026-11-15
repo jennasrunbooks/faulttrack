@@ -1,6 +1,6 @@
 # FaultTrack: product specification
 
-**Status:** GO (decided Nov 3, 2026). Building the graded midterm version.
+**Status:** Submitted Nov 15, 2026 (tag `midterm-submission`). GO decided Nov 3.
 **Course:** DataTalksClub ML Zoomcamp 2026, midterm project
 **Due:** **16 November 2026 (Mon), 17:00**.
 **Repo:** `jennasrunbooks/faulttrack` · **License:** Apache-2.0 for code. The data and derived data are CC BY 4.0 (see [Data](#3-data)).
@@ -327,15 +327,15 @@ faulttrack/                 # repo root (jennasrunbooks/faulttrack)
 
 | Criterion | Max | Full marks means | Where in this repo | Done |
 |---|---|---|---|---|
-| Problem description | 2 | README explains the problem and how the solution will be used | `README.md`: Problem, How it's used | ☐ |
-| EDA | 2 | Ranges, missing values, target analysis, feature importance | `notebook.ipynb` §2–3: per-fault signatures, disk telemetry gap, system-size table, mutual information, correlation | ☐ |
-| Model training | 3 | Multiple models (linear **and** tree-based) **and** tuned | `notebook.ipynb` §4–6 and §8: LR, DT, RF, XGBoost, tuned with nested grouped CV; README "Results" | ☐ |
-| Exporting notebook to script | 1 | Training logic in a script | `train.py` | ☐ |
-| Reproducibility | 1 | Notebook and script re-run; data accessible | committed `data/features/re2_features.parquet` + `make data`; fresh-clone check | ☐ |
-| Model deployment | 1 | Served with Flask, FastAPI or similar | `predict.py` (FastAPI) | ☐ |
-| Dependency and environment management | 2 | Dependency file **and** venv, plus README on install and activation | `pyproject.toml` + `uv.lock`; README "Setup" | ☐ |
-| Containerization | 2 | Dockerfile **and** README on build and run | `Dockerfile`; README "Docker" | ☐ |
-| Cloud deployment | 2 | Deployment code **and** a test URL or video/screenshot | `fly.toml` + README "Deploy"; `https://faulttrack.jennasrunbooks.com`; screenshots in `docs/images/` | ☐ |
+| Problem description | 2 | README explains the problem and how the solution will be used | `README.md`: Problem, How it's used | ✅ |
+| EDA | 2 | Ranges, missing values, target analysis, feature importance | `notebook.ipynb` §2–3: per-fault signatures, disk telemetry gap, system-size table, mutual information, correlation | ✅ |
+| Model training | 3 | Multiple models (linear **and** tree-based) **and** tuned | `notebook.ipynb` §4–6 and §8: LR, DT, RF, XGBoost, tuned with nested grouped CV; README "Results" | ✅ |
+| Exporting notebook to script | 1 | Training logic in a script | `train.py` | ✅ |
+| Reproducibility | 1 | Notebook and script re-run; data accessible | committed `data/features/re2_features.parquet` + `make data`; fresh-clone check | ✅ |
+| Model deployment | 1 | Served with Flask, FastAPI or similar | `predict.py` (FastAPI) | ✅ |
+| Dependency and environment management | 2 | Dependency file **and** venv, plus README on install and activation | `pyproject.toml` + `uv.lock`; README "Setup" | ✅ |
+| Containerization | 2 | Dockerfile **and** README on build and run | `Dockerfile`; README "Docker" | ✅ |
+| Cloud deployment | 2 | Deployment code **and** a test URL or video/screenshot | `fly.toml` + README "Deploy"; `https://faulttrack.jennasrunbooks.com`; screenshots in `docs/images/` | ✅ |
 
 ---
 
@@ -359,9 +359,12 @@ Mark the **Status** column `Done` (with the date) as each line completes. Workin
 | 10 | Containerization | CI `docker` job builds the service image when image inputs change (build only, no push); service `Dockerfile` (two steps: `uv sync --frozen --no-dev --no-install-project` for a cached dependency layer, then `COPY src/` + `uv sync --frozen --no-dev` to install the package; `$PORT`); `make docker-build` / `docker-run`; local test on the Mac | Thu Nov 12 | Done (Nov 6) |
 | 11 | Cloud deployment | Fly.io app; `fly.toml`; `faulttrack.jennasrunbooks.com` (certs + DNS); screenshots or video | Fri Nov 13 | Done (Nov 10) |
 | 12 | README + results page | Problem, data + credit, EDA highlights, results, generalization section, setup / run / Docker / deploy, rubric map; `web/index.html`; `REVIEWING.md` links and commands checked, "Numbers" table filled in line 13 | Sat Nov 14 | Done (Nov 7) |
-| 13 | Reproducibility check | Fresh clone in a new devcontainer: `make features` → notebook → `train.py` → `predict.py` → Docker → live URL; fix anything that breaks | Sun Nov 15 | ☐ |
-| 14 | **Submit** | On `main`: `git switch main && git pull`, `git tag -a midterm-submission -m "ML Zoomcamp 2026 midterm submission"`, `git push origin midterm-submission`; publish it as a GitHub release; submit the tag URL on the course platform | **Mon Nov 16, before 17:00** | ☐ |
-**PR CI design (`ci.yaml`).** Jobs run only when the files they check change, so a docs-only PR finishes in seconds:
+| 13 | Reproducibility check | Fresh clone in a new devcontainer: `make features` → notebook → `train.py` → `predict.py` → Docker → live URL; fix anything that breaks | Sun Nov 15 | Done (Nov 10; #47, #48) |
+| 14 | **Submit** | On `main`: `git switch main && git pull`, `git tag -a midterm-submission -m "ML Zoomcamp 2026 midterm submission"`, `git push origin midterm-submission`; publish it as a GitHub release; submit the tag URL on the course platform | **Mon Nov 16, before 17:00** | Done (Nov 15) |
+
+### PR CI design (`ci.yaml`)
+
+Jobs run only when the files they check change, so a docs-only PR finishes in seconds:
 
 | Job | Runs when the PR touches | Does |
 |---|---|---|

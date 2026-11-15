@@ -17,7 +17,7 @@ RE2 covers 3 microservice systems: Online Boutique (OB), Sock Shop (SS) and Trai
 
 "Verified" means the md5 printed by `make data` equals the checksum Zenodo publishes for the file (`https://zenodo.org/api/records/14590730`).
 
-The zips total about 4 GB, mostly logs and traces we don't use.
+The zips total about 4 GB. After extraction, `data/raw/` still takes about 4.1 GB (mostly the raw `metrics.csv` files, which the features don't use), so allow about 7 GB of free disk while `make data` runs.
 
 ## Download
 

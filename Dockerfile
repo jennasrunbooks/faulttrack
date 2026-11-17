@@ -5,7 +5,7 @@
 # amd64 for Fly.io and CI). Dependabot's docker ecosystem bumps it weekly: accept
 # only bumps that stay on Python 3.12 (pyproject.toml requires >=3.12,<3.13) and
 # keep the @sha256 pin. Same for the uv image below.
-FROM python:3.12-slim@sha256:4840d514c583a4d3d8cad3940e68dee6f0f6f3635c12fcd0a3d74c21a5b93a54
+FROM python:3.15-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 
 # uv 0.13.6, the version the devcontainer uses (multi-arch index digest).
 COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /uvx /bin/

@@ -7,6 +7,8 @@ FaultTrack looks at the metrics around an alert and tells on-call what kind of f
 
 Live demo: **https://faulttrack.jennasrunbooks.com** (API docs at [`/docs`](https://faulttrack.jennasrunbooks.com/docs))
 
+Write-up: [Evaluation Isn't One Number: Lessons from a Microservice Fault Classifier](https://blog.jennasrunbooks.com/evaluation-isn-t-one-number-lessons-from-a-microservice-fault-classifier), on why it scores 0.80 on seen systems but 0.57 on unseen ones.
+
 Reviewing for the [2026 ML Zoomcamp](https://github.com/DataTalksClub/machine-learning-zoomcamp) course? Start with [REVIEWING.md](REVIEWING.md).
 
 ---
